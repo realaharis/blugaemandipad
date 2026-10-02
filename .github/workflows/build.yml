@@ -44,11 +44,14 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # The runner image ships an Android SDK with the licences already accepted, so
-      # AGP downloads platform 36 and the build tools itself. ANDROID_HOME is set for
-      # us, which is what local.properties would otherwise be for.
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # GitHub's Ubuntu runner already ships with the Android SDK and sets ANDROID_HOME.
+      # Do not run setup-android here: its default legacy "tools" package was removed
+      # from Google's current SDK repository and makes the workflow fail before Gradle starts.
+      - name: Verify Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          test -d "$ANDROID_HOME"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --version
 
       - name: Unit tests
         run: ./gradlew test --stacktrace
