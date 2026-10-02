@@ -65,4 +65,13 @@ interface GamepadProfile {
      * Input reports are answered from live state by the service instead.
      */
     fun featureReport(reportId: Int): ByteArray? = null
+
+    /**
+     * Handles a host output report. Return true when the profile recognises and accepts it.
+     *
+     * Most generic hosts never send one. Apple hosts may set the controller-player LEDs during
+     * enumeration; accepting that report keeps setup from being rejected just because this virtual
+     * pad has no physical LEDs to drive.
+     */
+    fun handleOutputReport(reportId: Int, data: ByteArray?): Boolean = false
 }

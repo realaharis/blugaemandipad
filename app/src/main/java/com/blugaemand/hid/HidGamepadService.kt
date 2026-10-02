@@ -55,7 +55,9 @@ class HidGamepadService : Service() {
     private val _status = MutableStateFlow<HidStatus>(HidStatus.Initializing)
     val status: StateFlow<HidStatus> = _status.asStateFlow()
 
-    private val profile: GamepadProfile = GenericHidProfile
+    // Apple hosts are stricter about the HID usage layout than desktop hosts. The Apple profile
+    // follows Apple's documented game-controller descriptor and is also valid standard HID.
+    private val profile: GamepadProfile = AppleHidProfile
 
     /**
      * Reports go out on a dedicated thread. The Bluetooth stack call is blocking, and sharing a
@@ -337,17 +339,40 @@ class HidGamepadService : Service() {
                     }
                 }
 
+                BluetoothHidDevice.REPORT_TYPE_OUTPUT -> {
+                    if (profile.handleOutputReport(id.toInt() and 0xFF, null)) {
+                        hid.replyReport(device, type, id, byteArrayOf())
+                    } else {
+                        hid.reportError(device, BluetoothHidDevice.ERROR_RSP_UNSUPPORTED_REQ)
+                    }
+                }
+
                 else -> hid.reportError(device, BluetoothHidDevice.ERROR_RSP_UNSUPPORTED_REQ)
             }
         }
 
         @SuppressLint("MissingPermission")
         override fun onSetReport(device: BluetoothDevice?, type: Byte, id: Byte, data: ByteArray?) {
-            // Output and feature reports (rumble, LEDs) are not part of this profile.
             val hid = hidDevice ?: return
-            if (device != null) {
-                hid.reportError(device, BluetoothHidDevice.ERROR_RSP_UNSUPPORTED_REQ)
+            if (device == null) return
+
+            if (type == BluetoothHidDevice.REPORT_TYPE_OUTPUT &&
+                profile.handleOutputReport(id.toInt() and 0xFF, data)
+            ) {
+                // SET_REPORT is a control transfer; Android's callback has no success-reply API.
+                // Returning without reportError acknowledges the accepted output report.
+                return
             }
+
+            hid.reportError(device, BluetoothHidDevice.ERROR_RSP_UNSUPPORTED_REQ)
+        }
+
+        @SuppressLint("MissingPermission")
+        override fun onInterruptData(device: BluetoothDevice?, reportId: Byte, data: ByteArray?) {
+            if (device == null) return
+            // Apple may deliver player-LED output through the interrupt channel instead of
+            // SET_REPORT. There is no response packet for interrupt output; consume it quietly.
+            profile.handleOutputReport(reportId.toInt() and 0xFF, data)
         }
 
         override fun onVirtualCableUnplug(device: BluetoothDevice?) {
