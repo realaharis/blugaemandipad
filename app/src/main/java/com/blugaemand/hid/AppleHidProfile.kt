@@ -28,6 +28,10 @@ object AppleHidProfile : GamepadProfile {
     // Apple's sample descriptor does not use Report IDs.
     override val reportId: Int = 0
 
+    // Keep the public Bluetooth identity generic. Using a console-specific name can make iPadOS
+    // select a protocol-specific driver whose reports would not match this standard HID profile.
+    override val requiredAdapterName: String = "Wireless Controller"
+
     const val REPORT_SIZE = 8
 
     override val descriptor: ByteArray = byteArrayOf(
