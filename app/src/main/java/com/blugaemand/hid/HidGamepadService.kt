@@ -55,9 +55,9 @@ class HidGamepadService : Service() {
     private val _status = MutableStateFlow<HidStatus>(HidStatus.Initializing)
     val status: StateFlow<HidStatus> = _status.asStateFlow()
 
-    // Apple hosts are stricter about the HID usage layout than desktop hosts. The Apple profile
-    // follows Apple's documented game-controller descriptor and is also valid standard HID.
-    private val profile: GamepadProfile = AppleHidProfile
+    // Generic Apple path based on the Nimbus HID descriptor used in Apple's WebKit tests.
+    // No Sony/Nintendo/Xbox identity or protocol-specific authentication is involved.
+    private val profile: GamepadProfile = AppleGenericV2Profile
 
     /**
      * Reports go out on a dedicated thread. The Bluetooth stack call is blocking, and sharing a
@@ -157,7 +157,8 @@ class HidGamepadService : Service() {
         sendJob?.cancel()
         scope.cancel()
         releaseProfile()
-        reportExecutor.shutdownNow()
+        // BluetoothHidDevice may enqueue one final callback after unregisterApp(). Do not tear
+        // down its executor underneath that callback; the process reclaims it with the service.
         super.onDestroy()
     }
 
