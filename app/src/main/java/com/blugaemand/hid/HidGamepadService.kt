@@ -55,9 +55,9 @@ class HidGamepadService : Service() {
     private val _status = MutableStateFlow<HidStatus>(HidStatus.Initializing)
     val status: StateFlow<HidStatus> = _status.asStateFlow()
 
-    // Apple hosts are stricter about the HID usage layout than desktop hosts. The Apple profile
-    // follows Apple's documented game-controller descriptor and is also valid standard HID.
-    private val profile: GamepadProfile = AppleHidProfile
+    // iPadOS test mode: present the HID service using the DualShock 4 descriptor and report
+    // protocol rather than relying on generic-controller classification.
+    private val profile: GamepadProfile = DualShock4Profile
 
     /**
      * Reports go out on a dedicated thread. The Bluetooth stack call is blocking, and sharing a
@@ -157,7 +157,9 @@ class HidGamepadService : Service() {
         sendJob?.cancel()
         scope.cancel()
         releaseProfile()
-        reportExecutor.shutdownNow()
+        // BluetoothHidDevice can enqueue a final callback after unregisterApp(). Keep the
+        // callback executor alive through service teardown; the process will reclaim it. Closing
+        // it here caused RejectedExecutionException in real-device logs.
         super.onDestroy()
     }
 
