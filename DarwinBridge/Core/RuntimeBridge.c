@@ -16,3 +16,21 @@ size_t DBRuntimeChain(const char* source) {
 void* DBRuntimeChainAddress(void) {
     return (void*)&DBRuntimeChain;
 }
+
+
+#include <stdatomic.h>
+
+static _Atomic int gDBAppKitWindowRequest = 0;
+
+int32_t DBAppKitRequestDemoWindow(void) {
+    atomic_store_explicit(&gDBAppKitWindowRequest, 1, memory_order_release);
+    return 1;
+}
+
+int32_t DBAppKitConsumeDemoWindowRequest(void) {
+    return atomic_exchange_explicit(&gDBAppKitWindowRequest, 0, memory_order_acq_rel);
+}
+
+void* DBAppKitRequestDemoWindowAddress(void) {
+    return (void*)&DBAppKitRequestDemoWindow;
+}
