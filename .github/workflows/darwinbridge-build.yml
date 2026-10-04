@@ -14,10 +14,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Core parser and dyld smoke tests
+      - name: Core loader + dyld + runtime smoke tests
         working-directory: DarwinBridge
         run: |
-          swiftc             Core/Models.swift             Core/MachOParser.swift             Core/FrameworkShimRegistry.swift             Core/CompatibilityAnalyzer.swift             Core/ChainedFixupsParser.swift             Core/SymbolBroker.swift             Core/FixupPlanner.swift             Tests/parser_smoke.swift             -o /tmp/darwinbridge-smoke
+          swiftc \
+            Core/Models.swift \
+            Core/MachOParser.swift \
+            Core/FrameworkShimRegistry.swift \
+            Core/CompatibilityAnalyzer.swift \
+            Core/ChainedFixupsParser.swift \
+            Core/SymbolBroker.swift \
+            Core/FixupPlanner.swift \
+            Core/GuestAddressSpace.swift \
+            Tests/parser_smoke.swift \
+            -o /tmp/darwinbridge-smoke
           /tmp/darwinbridge-smoke
 
       - name: Build unsigned IPA
