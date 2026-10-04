@@ -1,11 +1,14 @@
 import Foundation
+import Darwin
 
 @main
 struct ParserSmoke {
     static func main() throws {
         try basicMachOSmoke()
         try chainedFixupsSmoke()
-        print("all DarwinBridge core smoke tests passed")
+        try guestBindSmoke()
+        try guestRebaseSmoke()
+        print("all DarwinBridge 0.3 core smoke tests passed")
     }
 
     static func basicMachOSmoke() throws {
@@ -48,8 +51,68 @@ struct ParserSmoke {
     }
 
     static func chainedFixupsSmoke() throws {
-        let payloadOffset = 256
-        let payloadSize = 80
+        let sample = makeChainedSample(pointerFormat: 2,
+                                       pointerRawValue: UInt64(1) << 63,
+                                       symbol: "_malloc")
+        let image = try MachOParser.parse(sample)
+        let info = try ChainedFixupsParser.parse(data: sample, image: image)
+
+        precondition(info.imports.count == 1)
+        precondition(info.imports[0].name == "_malloc")
+        precondition(info.fixups.count == 1)
+        precondition(info.unsupportedPointerFormats.isEmpty)
+    }
+
+    static func guestBindSmoke() throws {
+        let sample = makeChainedSample(pointerFormat: 2,
+                                       pointerRawValue: UInt64(1) << 63,
+                                       symbol: "_malloc")
+        let image = try MachOParser.parse(sample)
+        let plan = try FixupPlanner.make(data: sample, image: image)
+        precondition(plan.canApplyStage1)
+
+        let space = try GuestAddressSpace(data: sample, image: image)
+        let applied = try FixupApplier.apply(plan: plan, to: space)
+        precondition(applied.binds == 1)
+        precondition(applied.rebases == 0)
+
+        guard let slot = space.hostPointer(for: 0x100000000, byteCount: 8) else {
+            preconditionFailure("missing bind slot")
+        }
+        let written = slot.load(as: UInt64.self)
+        precondition(written == plan.resolutions[0].address!)
+    }
+
+    static func guestRebaseSmoke() throws {
+        let targetOffset: UInt64 = 0x20
+        let sample = makeChainedSample(pointerFormat: 6,
+                                       pointerRawValue: targetOffset,
+                                       symbol: "_malloc")
+        let image = try MachOParser.parse(sample)
+        let plan = try FixupPlanner.make(data: sample, image: image)
+
+        let space = try GuestAddressSpace(data: sample, image: image)
+        let applied = try FixupApplier.apply(plan: plan, to: space)
+        precondition(applied.rebases == 1)
+        precondition(applied.binds == 0)
+
+        guard let slot = space.hostPointer(for: 0x100000000, byteCount: 8),
+              let expectedPtr = space.hostPointer(for: 0x100000020) else {
+            preconditionFailure("missing rebase address")
+        }
+
+        let written = slot.load(as: UInt64.self)
+        let expected = UInt64(UInt(bitPattern: expectedPtr))
+        precondition(written == expected)
+    }
+
+    static func makeChainedSample(pointerFormat: UInt16,
+                                  pointerRawValue: UInt64,
+                                  symbol: String) -> Data {
+        let segmentFileOffset = 192
+        let segmentFileSize = 64
+        let payloadOffset = 320
+        let payloadSize = 96
         var data = Data(repeating: 0, count: payloadOffset + payloadSize)
 
         func put16(_ offset: Int, _ value: UInt16) {
@@ -75,8 +138,8 @@ struct ParserSmoke {
         for (i, b) in Array("__DATA".utf8).enumerated() { data[seg + 8 + i] = b }
         put64(seg + 24, 0x100000000)
         put64(seg + 32, 0x1000)
-        put64(seg + 40, 0)
-        put64(seg + 48, UInt64(data.count))
+        put64(seg + 40, UInt64(segmentFileOffset))
+        put64(seg + 48, UInt64(segmentFileSize))
         put32(seg + 56, 3)
         put32(seg + 60, 3)
 
@@ -85,6 +148,8 @@ struct ParserSmoke {
         put32(chained + 4, 16)
         put32(chained + 8, UInt32(payloadOffset))
         put32(chained + 12, UInt32(payloadSize))
+
+        put64(segmentFileOffset, pointerRawValue)
 
         let p = payloadOffset
         put32(p, 0)
@@ -102,22 +167,18 @@ struct ParserSmoke {
         let segmentStarts = starts + 8
         put32(segmentStarts, 24)
         put16(segmentStarts + 4, 4096)
-        put16(segmentStarts + 6, 2)
+        put16(segmentStarts + 6, pointerFormat)
         put64(segmentStarts + 8, 0)
         put32(segmentStarts + 16, 0)
         put16(segmentStarts + 20, 1)
-        put16(segmentStarts + 22, 0xFFFF)
+        put16(segmentStarts + 22, 0)
 
         put32(p + 60, 0)
-        let symbol = Array("_malloc\0".utf8)
-        for (i, b) in symbol.enumerated() { data[p + 64 + i] = b }
+        let bytes = Array((symbol + "\0").utf8)
+        for (i, byte) in bytes.enumerated() {
+            data[p + 64 + i] = byte
+        }
 
-        let image = try MachOParser.parse(data)
-        precondition(image.chainedFixups != nil)
-        let info = try ChainedFixupsParser.parse(data: data, image: image)
-        precondition(info.imports.count == 1)
-        precondition(info.imports[0].name == "_malloc")
-        precondition(info.fixups.isEmpty)
-        precondition(info.unsupportedPointerFormats.isEmpty)
+        return data
     }
 }
