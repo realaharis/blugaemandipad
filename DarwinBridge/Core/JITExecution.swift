@@ -138,28 +138,38 @@ extension JITExecutionBackend {
             memcpy(writable.advanced(by: stringOffset), bytes.baseAddress!, bytes.count)
         }
 
-        // ARM64:
-        //   ldr x0, literal_string_address
+        // AArch64 ABI-safe guest stub:
+        //   stp x29, x30, [sp, #-16]!
+        //   mov x29, sp
+        //   ldr x0,  literal_string_address
         //   ldr x16, literal_strlen_address
         //   blr x16
+        //   ldp x29, x30, [sp], #16
         //   ret
+        //   nop
         //   .quad string
         //   .quad strlen
+        //
+        // BLR overwrites x30 (LR), so preserving/restoring x30 is required.
         let instructions: [UInt32] = [
-            0x58000080, // ldr x0, #16
-            0x580000B0, // ldr x16, #20
+            0xA9BF7BFD, // stp x29, x30, [sp, #-16]!
+            0x910003FD, // mov x29, sp
+            0x580000C0, // ldr x0,  #24 -> literal at offset 32
+            0x580000F0, // ldr x16, #28 -> literal at offset 40
             0xD63F0200, // blr x16
-            0xD65F03C0  // ret
+            0xA8C17BFD, // ldp x29, x30, [sp], #16
+            0xD65F03C0, // ret
+            0xD503201F  // nop / align literals
         ]
 
-        instructions.withUnsafeBytes { bytes in
+        _ = instructions.withUnsafeBytes { bytes in
             memcpy(writable, bytes.baseAddress!, bytes.count)
         }
 
         let stringAddress = UInt64(UInt(bitPattern: executable.advanced(by: stringOffset)))
         let strlenAddress = UInt64(UInt(bitPattern: strlenPointer))
-        writable.advanced(by: 16).storeBytes(of: stringAddress.littleEndian, as: UInt64.self)
-        writable.advanced(by: 24).storeBytes(of: strlenAddress.littleEndian, as: UInt64.self)
+        writable.advanced(by: 32).storeBytes(of: stringAddress.littleEndian, as: UInt64.self)
+        writable.advanced(by: 40).storeBytes(of: strlenAddress.littleEndian, as: UInt64.self)
 
         typealias GuestFunction = @convention(c) () -> UInt64
         let function = unsafeBitCast(executable, to: GuestFunction.self)
