@@ -111,8 +111,9 @@ struct ContentView: View {
                         }
 
                         if let jitResult {
-                            row("MAP_JIT", jitResult.mapJITSucceeded ? "yes" : "no")
-                            row("JIT write protect", jitResult.writeProtectSupported ? "yes" : "no")
+                            row("Debugger attached", jitResult.debuggerAttached ? "yes" : "no")
+                            row("RW region", jitResult.regionAllocated ? "yes" : "no")
+                            row("JIT26 prepared", jitResult.regionPrepared ? "yes" : "no")
                             row("Execution attempted", jitResult.executionAttempted ? "yes" : "no")
                             row("Guest execution", jitResult.executed ? "PASS" : "not executed")
                             row("Return value", jitResult.returnValue.map(String.init) ?? "—")
