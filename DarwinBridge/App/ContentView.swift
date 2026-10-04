@@ -124,7 +124,7 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
                         }
 
-                        Text("Enable JIT externally with LiveContainer/StikDebug, then run this test.")
+                        Text("On M2/iOS 27, launch through LiveContainer with JIT and use darwinbridge-universal.js as the JIT Launch Script, then run this test.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
