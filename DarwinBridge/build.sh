@@ -14,6 +14,13 @@ SWIFTC="$(xcrun --sdk iphoneos --find swiftc)"
 "$SWIFTC"   -sdk "$SDK"   -target arm64-apple-ios17.0   -parse-as-library   -O   "$ROOT"/Core/*.swift "$ROOT"/App/*.swift   -framework SwiftUI   -framework UniformTypeIdentifiers   -framework Foundation   -o "$APP/DarwinBridge"
 
 cp "$ROOT/Info.plist" "$APP/Info.plist"\ncp "$ROOT/DarwinBridge.entitlements" "$APP/DarwinBridge.entitlements"
+cp "$ROOT/Resources/darwinbridge-jit.js" "$APP/darwinbridge-jit.js"
+
+# Embed the requested entitlements in the unsigned executable. Sideloaders
+# re-sign the bundle and can preserve/provision the permitted values.
+if command -v codesign >/dev/null 2>&1; then
+  codesign --force --sign - --entitlements "$ROOT/DarwinBridge.entitlements" "$APP/DarwinBridge"
+fi
 
 (
   cd "$BUILD"
