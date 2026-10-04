@@ -88,3 +88,101 @@ struct JITExecutionBackend {
         return (info.kp_proc.p_flag & P_TRACED) != 0
     }
 }
+
+
+struct RuntimeCallResult {
+    let debuggerAttached: Bool
+    let regionPrepared: Bool
+    let executed: Bool
+    let returnValue: UInt64?
+    let expectedValue: UInt64
+    let note: String
+}
+
+extension JITExecutionBackend {
+    static func runStrlenRuntimeTest() -> RuntimeCallResult {
+        guard isDebuggerAttachedForRuntime() else {
+            return RuntimeCallResult(debuggerAttached: false,
+                                     regionPrepared: false,
+                                     executed: false,
+                                     returnValue: nil,
+                                     expectedValue: 12,
+                                     note: "No live debugger is attached.")
+        }
+
+        guard let strlenPointer = RuntimeCompatibility.pointer(to: "strlen") else {
+            return RuntimeCallResult(debuggerAttached: true,
+                                     regionPrepared: false,
+                                     executed: false,
+                                     returnValue: nil,
+                                     expectedValue: 12,
+                                     note: "Host strlen could not be resolved.")
+        }
+
+        let pageSize = Int(getpagesize())
+        var rx: UnsafeMutableRawPointer?
+        var rw: UnsafeMutableRawPointer?
+        let status = DBJIT26CreateDualMapping(pageSize, &rx, &rw)
+        guard status == 0, let executable = rx, let writable = rw else {
+            return RuntimeCallResult(debuggerAttached: true,
+                                     regionPrepared: false,
+                                     executed: false,
+                                     returnValue: nil,
+                                     expectedValue: 12,
+                                     note: "JIT26 could not create the runtime-call code page (status \(status)).")
+        }
+
+        let message = Array("DarwinBridge\0".utf8)
+        let stringOffset = 0x100
+        message.withUnsafeBytes { bytes in
+            memcpy(writable.advanced(by: stringOffset), bytes.baseAddress!, bytes.count)
+        }
+
+        // ARM64:
+        //   ldr x0, literal_string_address
+        //   ldr x16, literal_strlen_address
+        //   blr x16
+        //   ret
+        //   .quad string
+        //   .quad strlen
+        let instructions: [UInt32] = [
+            0x58000080, // ldr x0, #16
+            0x580000B0, // ldr x16, #20
+            0xD63F0200, // blr x16
+            0xD65F03C0  // ret
+        ]
+
+        instructions.withUnsafeBytes { bytes in
+            memcpy(writable, bytes.baseAddress!, bytes.count)
+        }
+
+        let stringAddress = UInt64(UInt(bitPattern: executable.advanced(by: stringOffset)))
+        let strlenAddress = UInt64(UInt(bitPattern: strlenPointer))
+        writable.advanced(by: 16).storeBytes(of: stringAddress.littleEndian, as: UInt64.self)
+        writable.advanced(by: 24).storeBytes(of: strlenAddress.littleEndian, as: UInt64.self)
+
+        typealias GuestFunction = @convention(c) () -> UInt64
+        let function = unsafeBitCast(executable, to: GuestFunction.self)
+        let value = function()
+
+        return RuntimeCallResult(debuggerAttached: true,
+                                 regionPrepared: true,
+                                 executed: true,
+                                 returnValue: value,
+                                 expectedValue: 12,
+                                 note: value == 12
+                                    ? "Guest ARM64 called host strlen successfully."
+                                    : "Guest ARM64 returned an unexpected strlen result.")
+    }
+
+    private static func isDebuggerAttachedForRuntime() -> Bool {
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var mib = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        let result = mib.withUnsafeMutableBufferPointer { ptr in
+            sysctl(ptr.baseAddress, 4, &info, &size, nil, 0)
+        }
+        guard result == 0 else { return false }
+        return (info.kp_proc.p_flag & P_TRACED) != 0
+    }
+}
