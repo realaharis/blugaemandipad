@@ -11,6 +11,8 @@ struct ContentView: View {
     @State private var mappedImage: MappedMachOImage?
     @State private var importedData: Data?
     @State private var fixupPlan: FixupPlan?
+    @State private var guestSpace: GuestAddressSpace?
+    @State private var appliedFixups: AppliedFixups?
 
     var body: some View {
         NavigationStack {
@@ -54,27 +56,60 @@ struct ContentView: View {
                             row("Apply-ready", fixupPlan.canApplyStage1 ? "yes" : "no")
 
                             if !fixupPlan.info.unsupportedPointerFormats.isEmpty {
-                                let values = fixupPlan.info.unsupportedPointerFormats.sorted().map(String.init).joined(separator: ", ")
+                                let values = fixupPlan.info.unsupportedPointerFormats
+                                    .sorted()
+                                    .map(String.init)
+                                    .joined(separator: ", ")
                                 Text("Unsupported pointer formats: \(values)")
                                     .font(.caption)
                                     .foregroundStyle(.orange)
                             }
 
                             ForEach(fixupPlan.notes, id: \.self) {
-                                Text($0).font(.caption).foregroundStyle(.secondary)
+                                Text($0)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                         }
+                    }
 
-                        Text("This milestone parses and resolves chained fixups but does not execute guest code yet. ARM64e/PAC remains gated.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    Section("Stage-2 runtime") {
+                        Button("Load guest + apply fixups") {
+                            loadGuest(image)
+                        }
+                        .disabled(fixupPlan?.canApplyStage1 != true)
+
+                        if let guestSpace, let appliedFixups {
+                            row("Guest base", String(format: "0x%llX", guestSpace.guestBase))
+                            row("Guest end", String(format: "0x%llX", guestSpace.guestEnd))
+                            row("Mapped bytes", "\(guestSpace.size)")
+                            row("Host base", String(describing: guestSpace.base))
+                            row("Rebases applied", "\(appliedFixups.rebases)")
+                            row("Binds applied", "\(appliedFixups.binds)")
+
+                            if let plan = fixupPlan {
+                                let expected = plan.supportedFixupCount
+                                let actual = appliedFixups.rebases + appliedFixups.binds
+                                row("Fixup verification", actual == expected ? "passed" : "\(actual)/\(expected)")
+                            }
+
+                            Text("Guest memory is now allocated as one contiguous address space and supported chained rebases/binds have been written into it.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Analyze chained fixups first, then load the guest to apply them to real mapped memory.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
 
                     if let fixupPlan, !fixupPlan.resolutions.isEmpty {
                         Section("Symbol broker") {
                             ForEach(fixupPlan.resolutions) { symbol in
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(symbol.name).font(.caption).monospaced()
+                                    Text(symbol.name)
+                                        .font(.caption)
+                                        .monospaced()
                                     Text(symbol.dependencyPath ?? "unknown library")
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
@@ -95,25 +130,36 @@ struct ContentView: View {
 
                     if !report.blockers.isEmpty {
                         Section("Blockers") {
-                            ForEach(report.blockers, id: \.self) { Text($0) }
+                            ForEach(report.blockers, id: \.self) {
+                                Text($0)
+                            }
                         }
                     }
 
                     if !report.warnings.isEmpty {
                         Section("Warnings") {
-                            ForEach(report.warnings, id: \.self) { Text($0) }
+                            ForEach(report.warnings, id: \.self) {
+                                Text($0)
+                            }
                         }
                     }
 
                     Section("Framework map") {
                         ForEach(report.assessments) { item in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(item.dependency.path).font(.caption).monospaced()
-                                Text(item.disposition.rawValue).font(.subheadline).bold()
+                                Text(item.dependency.path)
+                                    .font(.caption)
+                                    .monospaced()
+                                Text(item.disposition.rawValue)
+                                    .font(.subheadline)
+                                    .bold()
                                 if let replacement = item.replacement {
-                                    Text("→ \(replacement)").font(.caption)
+                                    Text("→ \(replacement)")
+                                        .font(.caption)
                                 }
-                                Text(item.note).font(.caption).foregroundStyle(.secondary)
+                                Text(item.note)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                             .padding(.vertical, 4)
                         }
@@ -122,7 +168,8 @@ struct ContentView: View {
 
                 if let errorText {
                     Section("Error") {
-                        Text(errorText).foregroundStyle(.red)
+                        Text(errorText)
+                            .foregroundStyle(.red)
                     }
                 }
             }
@@ -139,6 +186,7 @@ struct ContentView: View {
 
                     let data = try Data(contentsOf: url, options: .mappedIfSafe)
                     let parsed = try MachOParser.parse(data)
+
                     fileName = url.lastPathComponent
                     image = parsed
                     report = CompatibilityAnalyzer.analyze(parsed)
@@ -147,6 +195,8 @@ struct ContentView: View {
                     mappedSummary = nil
                     mappedImage = nil
                     fixupPlan = nil
+                    guestSpace = nil
+                    appliedFixups = nil
                 } catch {
                     errorText = error.localizedDescription
                     image = nil
@@ -154,6 +204,8 @@ struct ContentView: View {
                     importedData = nil
                     mappedImage = nil
                     fixupPlan = nil
+                    guestSpace = nil
+                    appliedFixups = nil
                 }
             }
         }
@@ -164,7 +216,9 @@ struct ContentView: View {
         HStack {
             Text(name)
             Spacer()
-            Text(value).foregroundStyle(.secondary).monospaced()
+            Text(value)
+                .foregroundStyle(.secondary)
+                .monospaced()
         }
     }
 
@@ -185,9 +239,28 @@ struct ContentView: View {
         do {
             guard let importedData else { return }
             fixupPlan = try FixupPlanner.make(data: importedData, image: image)
+            guestSpace = nil
+            appliedFixups = nil
             errorText = nil
         } catch {
             fixupPlan = nil
+            guestSpace = nil
+            appliedFixups = nil
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func loadGuest(_ image: MachOImageInfo) {
+        do {
+            guard let importedData, let fixupPlan else { return }
+            let space = try GuestAddressSpace(data: importedData, image: image)
+            let applied = try FixupApplier.apply(plan: fixupPlan, to: space)
+            guestSpace = space
+            appliedFixups = applied
+            errorText = nil
+        } catch {
+            guestSpace = nil
+            appliedFixups = nil
             errorText = error.localizedDescription
         }
     }
