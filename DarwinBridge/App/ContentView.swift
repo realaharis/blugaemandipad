@@ -106,26 +106,6 @@ struct ContentView: View {
                     }
 
                     Section("Stage-3 execution capability") {
-                        Button("Enable JIT with StikDebug") {
-                            stikDebugStatus = "opening StikDebug…"
-                            StikDebugBridge.enableJIT { result in
-                                DispatchQueue.main.async {
-                                    switch result {
-                                    case .success:
-                                        stikDebugStatus = "request sent — return here after StikDebug attaches"
-                                    case .failure(let error):
-                                        stikDebugStatus = error.localizedDescription
-                                    }
-                                }
-                            }
-                        }
-
-                        row("StikDebug", StikDebugBridge.isAvailable ? "available" : "not found")
-                        Text(stikDebugStatus)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-
                         Button("Run ARM64 return-42 test") {
                             jitResult = JITExecutionBackend.runReturn42SelfTest()
                         }
@@ -144,7 +124,7 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
                         }
 
-                        Text("This test uses a fixed two-instruction ARM64 function that returns 42. General guest entry execution remains disabled.")
+                        Text("Enable JIT externally with LiveContainer/StikDebug, then run this test.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
