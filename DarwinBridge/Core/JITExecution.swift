@@ -277,6 +277,9 @@ extension JITExecutionBackend {
 }
 
 
+@_silgen_name("DBAppKitRequestDemoWindowAddress")
+private func DBAppKitRequestDemoWindowAddress() -> UnsafeMutableRawPointer?
+
 struct AppKitBridgeTestResult {
     let debuggerAttached: Bool
     let regionPrepared: Bool
@@ -297,7 +300,7 @@ extension JITExecutionBackend {
                                           note: "No live debugger is attached.")
         }
 
-        guard let bridgePointer = RuntimeCompatibility.pointer(to: "DBAppKitRequestDemoWindowAddress"),\n              let requestPointer = unsafeBitCast(bridgePointer, to: Optional<@convention(c) () -> UnsafeMutableRawPointer?>.self)?() else {
+        guard let requestPointer = DBAppKitRequestDemoWindowAddress() else {
             return AppKitBridgeTestResult(debuggerAttached: true,
                                           regionPrepared: false,
                                           guestExecuted: false,
