@@ -196,7 +196,7 @@ struct ContentView: View {
 
                             if result.passed {
                                 Task { @MainActor in
-                                    _ = AppKitUIKitBridge.shared.consumePendingGuestRequest()
+                                    _ = AppKitUIKitBridge.shared.createDemoWindowFacade()
                                 }
                             }
                         }
@@ -218,7 +218,7 @@ struct ContentView: View {
                             }
                         }
 
-                        Text("Guest ARM64 now posts a plain C request and returns before UIKit is touched. The host consumes that request on the main actor and renders the NSWindow/NSView facade.")
+                        Text("Guest ARM64 now posts through a memory mailbox and returns without calling C, Swift or UIKit. After the guest returns, the host renders the NSWindow/NSView facade on the main actor.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
