@@ -191,7 +191,14 @@ struct ContentView: View {
 
                     Section("Stage-5 AppKit → UIKit") {
                         Button("Guest create NSWindow / NSView") {
-                            appKitBridgeResult = JITExecutionBackend.runAppKitWindowBridgeTest()
+                            let result = JITExecutionBackend.runAppKitWindowBridgeTest()
+                            appKitBridgeResult = result
+
+                            if result.passed {
+                                Task { @MainActor in
+                                    _ = AppKitUIKitBridge.shared.consumePendingGuestRequest()
+                                }
+                            }
                         }
 
                         if let appKitBridgeResult {
@@ -211,7 +218,7 @@ struct ContentView: View {
                             }
                         }
 
-                        Text("NSWindow and NSView are represented by UIKit-backed host objects. This is a facade/translation layer, not binary AppKit itself.")
+                        Text("Guest ARM64 now posts a plain C request and returns before UIKit is touched. The host consumes that request on the main actor and renders the NSWindow/NSView facade.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
