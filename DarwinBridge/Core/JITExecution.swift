@@ -275,3 +275,78 @@ extension JITExecutionBackend {
                                     : "Runtime chain returned an unexpected value.")
     }
 }
+
+
+struct AppKitBridgeTestResult {
+    let debuggerAttached: Bool
+    let regionPrepared: Bool
+    let guestExecuted: Bool
+    let bridgeReturnValue: Int32?
+    let passed: Bool
+    let note: String
+}
+
+extension JITExecutionBackend {
+    static func runAppKitWindowBridgeTest() -> AppKitBridgeTestResult {
+        guard isDebuggerAttachedForRuntime() else {
+            return AppKitBridgeTestResult(debuggerAttached: false,
+                                          regionPrepared: false,
+                                          guestExecuted: false,
+                                          bridgeReturnValue: nil,
+                                          passed: false,
+                                          note: "No live debugger is attached.")
+        }
+
+        guard let bridgePointer = RuntimeCompatibility.pointer(to: "DBAppKitCreateDemoWindow") else {
+            return AppKitBridgeTestResult(debuggerAttached: true,
+                                          regionPrepared: false,
+                                          guestExecuted: false,
+                                          bridgeReturnValue: nil,
+                                          passed: false,
+                                          note: "DBAppKitCreateDemoWindow could not be resolved.")
+        }
+
+        let pageSize = Int(getpagesize())
+        var rx: UnsafeMutableRawPointer?
+        var rw: UnsafeMutableRawPointer?
+        let status = DBJIT26CreateDualMapping(pageSize, &rx, &rw)
+        guard status == 0, let executable = rx, let writable = rw else {
+            return AppKitBridgeTestResult(debuggerAttached: true,
+                                          regionPrepared: false,
+                                          guestExecuted: false,
+                                          bridgeReturnValue: nil,
+                                          passed: false,
+                                          note: "JIT26 could not create the AppKit bridge page (status \(status)).")
+        }
+
+        // ABI-safe guest stub:
+        // stp fp,lr; mov fp,sp; ldr x16,bridge; blr x16; restore; ret
+        let instructions: [UInt32] = [
+            0xA9BF7BFD,
+            0x910003FD,
+            0x580000B0, // ldr x16, literal at offset 24
+            0xD63F0200,
+            0xA8C17BFD,
+            0xD65F03C0
+        ]
+        _ = instructions.withUnsafeBytes { bytes in
+            memcpy(writable, bytes.baseAddress!, bytes.count)
+        }
+
+        let address = UInt64(UInt(bitPattern: bridgePointer))
+        writable.advanced(by: 24).storeBytes(of: address.littleEndian, as: UInt64.self)
+
+        typealias GuestFunction = @convention(c) () -> Int32
+        let function = unsafeBitCast(executable, to: GuestFunction.self)
+        let value = function()
+
+        return AppKitBridgeTestResult(debuggerAttached: true,
+                                      regionPrepared: true,
+                                      guestExecuted: true,
+                                      bridgeReturnValue: value,
+                                      passed: value == 1,
+                                      note: value == 1
+                                        ? "Guest ARM64 created a UIKit-backed NSWindow/NSView facade."
+                                        : "The bridge executed but could not create a foreground UIWindowScene window.")
+    }
+}
