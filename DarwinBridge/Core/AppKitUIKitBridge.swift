@@ -1,6 +1,9 @@
 import Foundation
 import UIKit
 
+@_silgen_name("DBAppKitConsumeDemoWindowRequest")
+private func DBAppKitConsumeDemoWindowRequest() -> Int32
+
 @MainActor
 final class AppKitUIKitBridge {
     static let shared = AppKitUIKitBridge()
