@@ -1,12 +1,6 @@
-// DarwinBridge JIT26 launch script - minimal/stable
-// LiveContainer + StikDebug, iOS/iPadOS 26+.
-//
-// DarwinBridge protocol:
-//   BRK #0xf00d, x16=1 -> allocate/prepare RX region
-//   BRK #0xf00d, x16=0 -> optional detach
-//
-// This version intentionally removes legacy/dynamic script handlers and avoids
-// issuing a second continue after vCont already resumed the inferior.
+// DarwinBridge JIT26 launch script - LiveContainer-safe v2
+// Key rule: do NOT re-inject the initial vAttach stop signal.
+// The attach response is only logged; execution starts with a clean 'c'.
 
 const CMD_DETACH = 0n;
 const CMD_PREPARE_REGION = 1n;
@@ -14,14 +8,13 @@ const BRK_IMMEDIATE = 0xf00d;
 
 function leHexToBigInt(hex) {
     if (typeof hex !== "string" || (hex.length & 1) !== 0) return null;
+    let value = 0n;
     const bytes = [];
     for (let i = 0; i < hex.length; i += 2) {
         const v = parseInt(hex.slice(i, i + 2), 16);
         if (Number.isNaN(v)) return null;
         bytes.push(v);
     }
-
-    let value = 0n;
     for (let i = bytes.length - 1; i >= 0; --i) {
         value = (value << 8n) | BigInt(bytes[i]);
     }
@@ -30,26 +23,23 @@ function leHexToBigInt(hex) {
 
 function bigIntToLE64(value) {
     let n = BigInt.asUintN(64, value);
-    const bytes = [];
+    const out = [];
     for (let i = 0; i < 8; ++i) {
-        bytes.push(Number(n & 0xffn).toString(16).padStart(2, "0"));
+        out.push(Number(n & 0xffn).toString(16).padStart(2, "0"));
         n >>= 8n;
     }
-    return bytes.join("");
+    return out.join("");
 }
 
 function littleEndianU32(hex) {
     if (typeof hex !== "string" || hex.length !== 8) return null;
-    const b0 = parseInt(hex.slice(0, 2), 16);
-    const b1 = parseInt(hex.slice(2, 4), 16);
-    const b2 = parseInt(hex.slice(4, 6), 16);
-    const b3 = parseInt(hex.slice(6, 8), 16);
-    if ([b0, b1, b2, b3].some(Number.isNaN)) return null;
-    return ((b0) | (b1 << 8) | (b2 << 16) | (b3 << 24)) >>> 0;
-}
-
-function extractBRKImmediate(insn) {
-    return (insn >>> 5) & 0xffff;
+    const bytes = [];
+    for (let i = 0; i < 4; ++i) {
+        const v = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+        if (Number.isNaN(v)) return null;
+        bytes.push(v);
+    }
+    return (bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24)) >>> 0;
 }
 
 function parseThread(stop) {
@@ -57,10 +47,9 @@ function parseThread(stop) {
     return m ? m.groups.tid : null;
 }
 
-function parseRegister(stop, regNumber) {
-    const key = regNumber.toString(16).padStart(2, "0");
-    const re = new RegExp("(?:^|;)" + key + ":(?<reg>[0-9a-f]{16});", "i");
-    const m = re.exec(stop || "");
+function parseRegister(stop, number) {
+    const key = number.toString(16).padStart(2, "0");
+    const m = new RegExp("(?:^|;)" + key + ":(?<reg>[0-9a-f]{16});", "i").exec(stop || "");
     return m ? leHexToBigInt(m.groups.reg) : null;
 }
 
@@ -69,27 +58,27 @@ function parseSignal(stop) {
     return m ? m.groups.sig : null;
 }
 
-function writeRegister(regNumber, value, tid) {
-    const reg = regNumber.toString(16);
-    return send_command(`P${reg}=${bigIntToLE64(value)};thread:${tid};`);
+function writeRegister(number, value, tid) {
+    return send_command(`P${number.toString(16)}=${bigIntToLE64(value)};thread:${tid};`);
 }
 
 const pid = get_pid();
-log(`DBJIT26: pid=${pid}`);
+log(`DBJIT26-v2: pid=${pid}`);
 
-let stop = send_command(`vAttach;${pid.toString(16)}`);
-log(`DBJIT26: attach=${stop}`);
+const attachResponse = send_command(`vAttach;${pid.toString(16)}`);
+log(`DBJIT26-v2: attach=${attachResponse}`);
 
-let running = true;
+// IMPORTANT: ignore the attach stop packet. Start execution normally.
+let stop = send_command("c");
 
-while (running) {
+while (true) {
     if (typeof stop !== "string" || stop.length === 0) {
         stop = send_command("c");
         continue;
     }
 
     if (/^[WX]/.test(stop)) {
-        log(`DBJIT26: inferior ended: ${stop}`);
+        log(`DBJIT26-v2: process ended: ${stop}`);
         break;
     }
 
@@ -100,22 +89,23 @@ while (running) {
     const x16 = parseRegister(stop, 0x10);
 
     if (!tid || pc === null || x16 === null) {
-        log("DBJIT26: incomplete stop packet; resuming normally");
+        log("DBJIT26-v2: unparsed stop; continuing");
         stop = send_command("c");
         continue;
     }
 
-    const rawInstruction = send_command(`m${pc.toString(16)},4`);
-    const instruction = littleEndianU32(rawInstruction);
-    const isBRK = instruction !== null &&
-        (((instruction & 0xffe0001f) >>> 0) === 0xd4200000);
+    const raw = send_command(`m${pc.toString(16)},4`);
+    const insn = littleEndianU32(raw);
+    const isBRK = insn !== null && (((insn & 0xffe0001f) >>> 0) === 0xd4200000);
 
     if (!isBRK) {
-        // vCont itself resumes and waits for the next stop. Use that returned
-        // stop directly; do NOT issue another 'c' before processing it.
+        // For ordinary debugger stops, continue without re-injecting the attach
+        // stop signal. Only forward a signal after the app has actually run.
         const sig = parseSignal(stop);
-        if (sig) {
-            log(`DBJIT26: forwarding signal 0x${sig}`);
+        if (sig === "05") {
+            // SIGTRAP unrelated to our BRK: resume cleanly.
+            stop = send_command("c");
+        } else if (sig) {
             stop = send_command(`vCont;S${sig}:${tid}`);
         } else {
             stop = send_command("c");
@@ -123,23 +113,21 @@ while (running) {
         continue;
     }
 
-    const imm = extractBRKImmediate(instruction);
+    const imm = (insn >>> 5) & 0xffff;
+
     if (imm !== BRK_IMMEDIATE) {
-        // An unrelated debugger breakpoint should not be consumed by our JIT
-        // protocol. Advance past it without injecting SIGTRAP into the app.
-        log(`DBJIT26: skipping unrelated BRK #0x${imm.toString(16)}`);
+        // Do not consume unknown app breakpoints by delivering SIGTRAP.
+        // Advance past the instruction and resume.
         writeRegister(0x20, pc + 4n, tid);
         stop = send_command("c");
         continue;
     }
 
-    // DarwinBridge owns BRK #0xf00d. Move PC past the breakpoint first.
-    const pcResponse = writeRegister(0x20, pc + 4n, tid);
-    log(`DBJIT26: pc+4=${pcResponse}`);
+    // DarwinBridge owns BRK #0xf00d.
+    writeRegister(0x20, pc + 4n, tid);
 
     if (x16 === CMD_PREPARE_REGION) {
         if (x1 === null || x1 <= 0n) {
-            log("DBJIT26: invalid prepare size");
             writeRegister(0x00, 0n, tid);
             stop = send_command("c");
             continue;
@@ -148,13 +136,10 @@ while (running) {
         let rx = x0 === null ? 0n : x0;
 
         if (rx === 0n) {
-            const command = `_M${x1.toString(16)},rx`;
-            const response = send_command(command);
-            log(`DBJIT26: ${command} => ${response}`);
+            const response = send_command(`_M${x1.toString(16)},rx`);
+            log(`DBJIT26-v2: RX alloc => ${response}`);
 
-            if (typeof response !== "string" ||
-                !/^[0-9a-f]+$/i.test(response)) {
-                log("DBJIT26: RX allocation failed");
+            if (typeof response !== "string" || !/^[0-9a-f]+$/i.test(response)) {
                 writeRegister(0x00, 0n, tid);
                 stop = send_command("c");
                 continue;
@@ -164,30 +149,23 @@ while (running) {
         }
 
         try {
-            const prepareResult = prepare_memory_region(rx, x1);
-            log(`DBJIT26: prepare 0x${rx.toString(16)} size=0x${x1.toString(16)} => ${prepareResult}`);
-        } catch (error) {
-            log(`DBJIT26: prepare_memory_region failed: ${error}`);
+            const result = prepare_memory_region(rx, x1);
+            log(`DBJIT26-v2: prepare 0x${rx.toString(16)} => ${result}`);
+            writeRegister(0x00, rx, tid);
+        } catch (e) {
+            log(`DBJIT26-v2: prepare failed: ${e}`);
             writeRegister(0x00, 0n, tid);
-            stop = send_command("c");
-            continue;
         }
-
-        const x0Response = writeRegister(0x00, rx, tid);
-        log(`DBJIT26: return RX 0x${rx.toString(16)} => ${x0Response}`);
 
         stop = send_command("c");
         continue;
     }
 
     if (x16 === CMD_DETACH) {
-        log("DBJIT26: detach requested");
         send_command("D");
-        running = false;
         break;
     }
 
-    log(`DBJIT26: unknown command x16=${x16.toString()}`);
     writeRegister(0x00, 0n, tid);
     stop = send_command("c");
 }
