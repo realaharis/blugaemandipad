@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var guestSpace: GuestAddressSpace?
     @State private var appliedFixups: AppliedFixups?
     @State private var jitResult: JITExecutionResult?
+    @State private var stikDebugStatus = "not requested"
 
     var body: some View {
         NavigationStack {
@@ -105,6 +106,26 @@ struct ContentView: View {
                     }
 
                     Section("Stage-3 execution capability") {
+                        Button("Enable JIT with StikDebug") {
+                            stikDebugStatus = "opening StikDebug…"
+                            StikDebugBridge.enableJIT { result in
+                                DispatchQueue.main.async {
+                                    switch result {
+                                    case .success:
+                                        stikDebugStatus = "request sent — return here after StikDebug attaches"
+                                    case .failure(let error):
+                                        stikDebugStatus = error.localizedDescription
+                                    }
+                                }
+                            }
+                        }
+
+                        row("StikDebug", StikDebugBridge.isAvailable ? "available" : "not found")
+                        Text(stikDebugStatus)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+
                         Button("Run ARM64 return-42 test") {
                             jitResult = JITExecutionBackend.runReturn42SelfTest()
                         }
