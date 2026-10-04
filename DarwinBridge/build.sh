@@ -13,7 +13,7 @@ SWIFTC="$(xcrun --sdk iphoneos --find swiftc)"
 
 "$SWIFTC"   -sdk "$SDK"   -target arm64-apple-ios17.0   -parse-as-library   -O   "$ROOT"/Core/*.swift "$ROOT"/App/*.swift   -framework SwiftUI   -framework UniformTypeIdentifiers   -framework Foundation   -framework UIKit   -o "$APP/DarwinBridge"
 
-cp "$ROOT/Info.plist" "$APP/Info.plist"
+cp "$ROOT/Info.plist" "$APP/Info.plist"\ncp "$ROOT/JIT/darwinbridge-universal.js" "$APP/darwinbridge-universal.js"
 
 if command -v codesign >/dev/null 2>&1; then
   codesign --force --sign -     --entitlements "$ROOT/DarwinBridge.entitlements"     "$APP/DarwinBridge"
