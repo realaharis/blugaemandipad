@@ -147,7 +147,7 @@ struct ContentView: View {
                                     Spacer()
                                     Text(probe.resolved ? "resolved" : "missing")
                                         .font(.caption)
-                                        .foregroundStyle(probe.resolved ? .secondary : .orange)
+                                        .foregroundStyle(probe.resolved ? Color.secondary : Color.orange)
                                 }
                             }
                         }
