@@ -297,13 +297,13 @@ extension JITExecutionBackend {
                                           note: "No live debugger is attached.")
         }
 
-        guard let bridgePointer = RuntimeCompatibility.pointer(to: "DBAppKitCreateDemoWindow") else {
+        guard let bridgePointer = RuntimeCompatibility.pointer(to: "DBAppKitRequestDemoWindowAddress"),\n              let requestPointer = unsafeBitCast(bridgePointer, to: Optional<@convention(c) () -> UnsafeMutableRawPointer?>.self)?() else {
             return AppKitBridgeTestResult(debuggerAttached: true,
                                           regionPrepared: false,
                                           guestExecuted: false,
                                           bridgeReturnValue: nil,
                                           passed: false,
-                                          note: "DBAppKitCreateDemoWindow could not be resolved.")
+                                          note: "The C AppKit request shim could not be resolved.")
         }
 
         let pageSize = Int(getpagesize())
@@ -333,7 +333,7 @@ extension JITExecutionBackend {
             memcpy(writable, bytes.baseAddress!, bytes.count)
         }
 
-        let address = UInt64(UInt(bitPattern: bridgePointer))
+        let address = UInt64(UInt(bitPattern: requestPointer))
         writable.advanced(by: 24).storeBytes(of: address.littleEndian, as: UInt64.self)
 
         typealias GuestFunction = @convention(c) () -> Int32
@@ -346,7 +346,7 @@ extension JITExecutionBackend {
                                       bridgeReturnValue: value,
                                       passed: value == 1,
                                       note: value == 1
-                                        ? "Guest ARM64 created a UIKit-backed NSWindow/NSView facade."
+                                        ? "Guest ARM64 posted an AppKit window request through the C shim."
                                         : "The bridge executed but could not create a foreground UIWindowScene window.")
     }
 }
