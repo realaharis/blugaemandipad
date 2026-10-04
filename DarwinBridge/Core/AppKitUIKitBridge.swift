@@ -5,7 +5,7 @@ import UIKit
 final class AppKitUIKitBridge {
     static let shared = AppKitUIKitBridge()
 
-    private var guestWindows: [UIWindow] = []
+    private var guestOverlays: [UIView] = []
 
     struct Snapshot {
         let windowCount: Int
@@ -18,54 +18,61 @@ final class AppKitUIKitBridge {
                                          lastViewClass: "none")
 
     @discardableResult
-    func createDemoWindow() -> Int32 {
-        guard let scene = UIApplication.shared.connectedScenes
+    func createDemoWindowFacade() -> Int32 {
+        guard let hostWindow = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
-            .first(where: { $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive }) else {
+            .flatMap({ $0.windows })
+            .first(where: { !$0.isHidden && $0.alpha > 0 }),
+              let hostView = hostWindow.rootViewController?.view else {
             return -10
         }
 
-        let window = UIWindow(windowScene: scene)
-        window.frame = scene.coordinateSpace.bounds
+        let overlay = UIView(frame: hostView.bounds)
+        overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.18)
 
-        let controller = UIViewController()
-        controller.view.backgroundColor = .systemBackground
+        let panelWidth = min(hostView.bounds.width - 40, 420)
+        let panel = UIView(frame: CGRect(x: (hostView.bounds.width - panelWidth) / 2,
+                                         y: 120,
+                                         width: panelWidth,
+                                         height: 220))
+        panel.autoresizingMask = [.flexibleLeftMargin, .flexibleRightMargin]
+        panel.backgroundColor = .secondarySystemBackground
+        panel.layer.cornerRadius = 20
+        panel.layer.borderWidth = 1
 
-        let guestView = UIView(frame: CGRect(x: 28, y: 120, width: 320, height: 180))
-        guestView.backgroundColor = .secondarySystemBackground
-        guestView.layer.cornerRadius = 18
-        guestView.layer.borderWidth = 1
-
-        let label = UILabel(frame: CGRect(x: 20, y: 20, width: 280, height: 44))
+        let label = UILabel(frame: CGRect(x: 20, y: 24, width: panelWidth - 40, height: 36))
         label.text = "DarwinBridge NSView → UIView"
         label.font = .systemFont(ofSize: 19, weight: .semibold)
-        guestView.addSubview(label)
+        panel.addSubview(label)
 
-        let detail = UILabel(frame: CGRect(x: 20, y: 70, width: 280, height: 70))
-        detail.text = "Created by guest ARM64 through the AppKit compatibility bridge."
-        detail.numberOfLines = 3
+        let detail = UILabel(frame: CGRect(x: 20, y: 72, width: panelWidth - 40, height: 88))
+        detail.text = "Guest ARM64 requested an NSWindow/NSView facade. DarwinBridge rendered it inside the current UIKit host window."
+        detail.numberOfLines = 4
         detail.font = .systemFont(ofSize: 14)
-        guestView.addSubview(detail)
+        panel.addSubview(detail)
 
-        controller.view.addSubview(guestView)
-        window.rootViewController = controller
-        window.windowLevel = .alert + 1
-        window.isHidden = false
-        window.makeKeyAndVisible()
+        let badge = UILabel(frame: CGRect(x: 20, y: 172, width: panelWidth - 40, height: 24))
+        badge.text = "AppKit facade active"
+        badge.font = .systemFont(ofSize: 13, weight: .medium)
+        badge.textAlignment = .center
+        panel.addSubview(badge)
 
-        guestWindows.append(window)
-        snapshot = Snapshot(windowCount: guestWindows.count,
-                            lastWindowVisible: !window.isHidden,
-                            lastViewClass: String(describing: type(of: guestView)))
+        overlay.addSubview(panel)
+        hostView.addSubview(overlay)
+
+        guestOverlays.append(overlay)
+        snapshot = Snapshot(windowCount: guestOverlays.count,
+                            lastWindowVisible: true,
+                            lastViewClass: String(describing: type(of: panel)))
         return 1
     }
 
     func dismissAllGuestWindows() {
-        for window in guestWindows {
-            window.isHidden = true
-            window.rootViewController = nil
+        for overlay in guestOverlays {
+            overlay.removeFromSuperview()
         }
-        guestWindows.removeAll()
+        guestOverlays.removeAll()
         snapshot = Snapshot(windowCount: 0,
                             lastWindowVisible: false,
                             lastViewClass: "none")
@@ -74,30 +81,16 @@ final class AppKitUIKitBridge {
 
 @_cdecl("DBAppKitCreateDemoWindow")
 public func DBAppKitCreateDemoWindow() -> Int32 {
-    if Thread.isMainThread {
-        return MainActor.assumeIsolated {
-            AppKitUIKitBridge.shared.createDemoWindow()
-        }
+    // Never mutate UIKit synchronously from inside the JIT guest call.
+    // Queue the facade creation so guest ARM64 can unwind first.
+    DispatchQueue.main.async {
+        AppKitUIKitBridge.shared.createDemoWindowFacade()
     }
-
-    var result: Int32 = -11
-    DispatchQueue.main.sync {
-        MainActor.assumeIsolated {
-            result = AppKitUIKitBridge.shared.createDemoWindow()
-        }
-    }
-    return result
+    return 1
 }
 
 @_cdecl("DBAppKitDismissGuestWindows")
 public func DBAppKitDismissGuestWindows() {
-    if Thread.isMainThread {
-        MainActor.assumeIsolated {
-            AppKitUIKitBridge.shared.dismissAllGuestWindows()
-        }
-        return
-    }
-
     DispatchQueue.main.async {
         AppKitUIKitBridge.shared.dismissAllGuestWindows()
     }
