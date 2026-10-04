@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var fixupPlan: FixupPlan?
     @State private var guestSpace: GuestAddressSpace?
     @State private var appliedFixups: AppliedFixups?
+    @State private var jitResult: JITExecutionResult?
 
     var body: some View {
         NavigationStack {
