@@ -130,6 +130,47 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     }
 
+                    Section("Stage-4 macOS runtime") {
+                        Button("Probe libSystem compatibility") {
+                            runtimeReport = RuntimeCompatibility.probeCoreRuntime()
+                        }
+
+                        if let runtimeReport {
+                            row("Resolved symbols", "\(runtimeReport.resolvedCount)/\(runtimeReport.totalCount)")
+                            row("Core libc ready", runtimeReport.coreReady ? "yes" : "no")
+
+                            ForEach(runtimeReport.probes) { probe in
+                                HStack {
+                                    Text(probe.symbol).monospaced().font(.caption)
+                                    Spacer()
+                                    Text(probe.resolved ? "resolved" : "missing")
+                                        .font(.caption)
+                                        .foregroundStyle(probe.resolved ? .secondary : .orange)
+                                }
+                            }
+                        }
+
+                        Button("Run guest → strlen test") {
+                            runtimeCallResult = JITExecutionBackend.runStrlenRuntimeTest()
+                        }
+
+                        if let runtimeCallResult {
+                            row("Debugger", runtimeCallResult.debuggerAttached ? "yes" : "no")
+                            row("JIT region", runtimeCallResult.regionPrepared ? "yes" : "no")
+                            row("Guest call", runtimeCallResult.executed ? "executed" : "not executed")
+                            row("strlen result", runtimeCallResult.returnValue.map(String.init) ?? "—")
+                            row("Expected", "\(runtimeCallResult.expectedValue)")
+                            row("Runtime ABI", runtimeCallResult.returnValue == runtimeCallResult.expectedValue ? "PASS" : "not passed")
+                            Text(runtimeCallResult.note)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Text("This stage verifies that ARM64 guest code can call selected iOS libSystem/libc symbols using the native AArch64 ABI.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     if let fixupPlan, !fixupPlan.resolutions.isEmpty {
                         Section("Symbol broker") {
                             ForEach(fixupPlan.resolutions) { symbol in
