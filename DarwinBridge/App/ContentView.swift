@@ -188,6 +188,33 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     }
 
+                    Section("Stage-5 AppKit → UIKit") {
+                        Button("Guest create NSWindow / NSView") {
+                            appKitBridgeResult = JITExecutionBackend.runAppKitWindowBridgeTest()
+                        }
+
+                        if let appKitBridgeResult {
+                            row("Debugger", appKitBridgeResult.debuggerAttached ? "yes" : "no")
+                            row("JIT region", appKitBridgeResult.regionPrepared ? "yes" : "no")
+                            row("Guest executed", appKitBridgeResult.guestExecuted ? "yes" : "no")
+                            row("Bridge return", appKitBridgeResult.bridgeReturnValue.map(String.init) ?? "—")
+                            row("AppKit bridge", appKitBridgeResult.passed ? "PASS" : "not passed")
+                            Text(appKitBridgeResult.note)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Button("Dismiss guest windows") {
+                            Task { @MainActor in
+                                AppKitUIKitBridge.shared.dismissAllGuestWindows()
+                            }
+                        }
+
+                        Text("NSWindow and NSView are represented by UIKit-backed host objects. This is a facade/translation layer, not binary AppKit itself.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     if let fixupPlan, !fixupPlan.resolutions.isEmpty {
                         Section("Symbol broker") {
                             ForEach(fixupPlan.resolutions) { symbol in
