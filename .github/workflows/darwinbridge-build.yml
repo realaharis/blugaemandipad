@@ -1,0 +1,30 @@
+name: DarwinBridge iOS prototype
+
+on:
+  push:
+    branches: ["feat/darwinbridge-macho-loader"]
+    paths:
+      - "DarwinBridge/**"
+      - ".github/workflows/darwinbridge-build.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Core parser smoke test
+        working-directory: DarwinBridge
+        run: |
+          swiftc Core/Models.swift Core/MachOParser.swift Core/FrameworkShimRegistry.swift Core/CompatibilityAnalyzer.swift Tests/parser_smoke.swift -o /tmp/parser-smoke
+          /tmp/parser-smoke
+
+      - name: Build unsigned IPA
+        working-directory: DarwinBridge
+        run: ./build.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DarwinBridge-unsigned-ipa
+          path: DarwinBridge/build/DarwinBridge-unsigned.ipa
