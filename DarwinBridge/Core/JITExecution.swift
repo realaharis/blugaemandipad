@@ -300,15 +300,6 @@ extension JITExecutionBackend {
                                           note: "No live debugger is attached.")
         }
 
-        guard let requestPointer = DBAppKitRequestDemoWindowAddress() else {
-            return AppKitBridgeTestResult(debuggerAttached: true,
-                                          regionPrepared: false,
-                                          guestExecuted: false,
-                                          bridgeReturnValue: nil,
-                                          passed: false,
-                                          note: "The C AppKit request shim could not be resolved.")
-        }
-
         let pageSize = Int(getpagesize())
         var rx: UnsafeMutableRawPointer?
         var rw: UnsafeMutableRawPointer?
@@ -319,37 +310,54 @@ extension JITExecutionBackend {
                                           guestExecuted: false,
                                           bridgeReturnValue: nil,
                                           passed: false,
-                                          note: "JIT26 could not create the AppKit bridge page (status \(status)).")
+                                          note: "JIT26 could not create the AppKit mailbox page (status \(status)).")
         }
 
-        // ABI-safe guest stub:
-        // stp fp,lr; mov fp,sp; ldr x16,bridge; blr x16; restore; ret
+        // Stage-5 mailbox:
+        // Guest ARM64 does not call C, Swift or UIKit here.
+        // It only writes 1 to a host-owned UInt32 and returns.
+        let mailbox = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
+        mailbox.initialize(to: 0)
+        defer {
+            mailbox.deinitialize(count: 1)
+            mailbox.deallocate()
+        }
+
+        //   ldr x16, mailbox_literal
+        //   mov w0, #1
+        //   str w0, [x16]
+        //   ret
+        //   nop
+        //   nop
+        //   .quad mailbox
         let instructions: [UInt32] = [
-            0xA9BF7BFD,
-            0x910003FD,
-            0x580000B0, // ldr x16, literal at offset 24
-            0xD63F0200,
-            0xA8C17BFD,
-            0xD65F03C0
+            0x580000D0, // ldr x16, #24
+            0x52800020, // mov w0, #1
+            0xB9000200, // str w0, [x16]
+            0xD65F03C0, // ret
+            0xD503201F, // nop
+            0xD503201F  // nop
         ]
+
         _ = instructions.withUnsafeBytes { bytes in
             memcpy(writable, bytes.baseAddress!, bytes.count)
         }
 
-        let address = UInt64(UInt(bitPattern: requestPointer))
-        writable.advanced(by: 24).storeBytes(of: address.littleEndian, as: UInt64.self)
+        let mailboxAddress = UInt64(UInt(bitPattern: mailbox))
+        writable.advanced(by: 24).storeBytes(of: mailboxAddress.littleEndian, as: UInt64.self)
 
         typealias GuestFunction = @convention(c) () -> Int32
         let function = unsafeBitCast(executable, to: GuestFunction.self)
         let value = function()
 
+        let posted = mailbox.pointee == 1
         return AppKitBridgeTestResult(debuggerAttached: true,
                                       regionPrepared: true,
                                       guestExecuted: true,
                                       bridgeReturnValue: value,
-                                      passed: value == 1,
-                                      note: value == 1
-                                        ? "Guest ARM64 posted an AppKit window request through the C shim."
-                                        : "The bridge executed but could not create a foreground UIWindowScene window.")
+                                      passed: posted && value == 1,
+                                      note: posted && value == 1
+                                        ? "Guest ARM64 posted an AppKit request through a memory mailbox."
+                                        : "Guest returned, but the AppKit mailbox was not updated as expected.")
     }
 }
