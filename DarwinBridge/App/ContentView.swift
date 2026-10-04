@@ -103,6 +103,30 @@ struct ContentView: View {
                         }
                     }
 
+                    Section("Stage-3 execution capability") {
+                        Button("Run ARM64 return-42 test") {
+                            jitResult = JITExecutionBackend.runReturn42SelfTest()
+                        }
+
+                        if let jitResult {
+                            row("MAP_JIT", jitResult.mapJITSucceeded ? "yes" : "no")
+                            row("JIT write protect", jitResult.writeProtectSupported ? "yes" : "no")
+                            row("Execution attempted", jitResult.executionAttempted ? "yes" : "no")
+                            row("Guest execution", jitResult.executed ? "PASS" : "not executed")
+                            row("Return value", jitResult.returnValue.map(String.init) ?? "—")
+                            if jitResult.errnoValue != 0 {
+                                row("errno", "\(jitResult.errnoValue)")
+                            }
+                            Text(jitResult.note)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Text("This test uses a fixed two-instruction ARM64 function that returns 42. General guest entry execution remains disabled.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     if let fixupPlan, !fixupPlan.resolutions.isEmpty {
                         Section("Symbol broker") {
                             ForEach(fixupPlan.resolutions) { symbol in
