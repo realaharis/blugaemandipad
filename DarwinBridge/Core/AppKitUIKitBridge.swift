@@ -68,6 +68,12 @@ final class AppKitUIKitBridge {
         return 1
     }
 
+    @discardableResult
+    func consumePendingGuestRequest() -> Int32 {
+        guard DBAppKitConsumeDemoWindowRequest() == 1 else { return 0 }
+        return createDemoWindowFacade()
+    }
+
     func dismissAllGuestWindows() {
         for overlay in guestOverlays {
             overlay.removeFromSuperview()
