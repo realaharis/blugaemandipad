@@ -17,6 +17,7 @@ struct ContentView: View {
     @State private var runtimeReport: RuntimeCompatibilityReport?
     @State private var runtimeCallResult: RuntimeCallResult?
     @State private var runtimeChainResult: RuntimeCallResult?
+    @State private var appKitBridgeResult: AppKitBridgeTestResult?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
