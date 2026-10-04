@@ -11,7 +11,7 @@ struct SymbolBroker {
                                     libraryOrdinal: item.libraryOrdinal,
                                     dependencyPath: dependency,
                                     address: address.map { UInt64(UInt(bitPattern: $0)) },
-                                    source: address == nil ? "unresolved" : "RTLD_DEFAULT")
+                                    source: address == nil ? "unresolved" : "process-global")
         }
     }
 
@@ -26,18 +26,26 @@ struct SymbolBroker {
             default: return nil
             }
         }
+
         let index = Int(ordinal - 1)
         guard image.dependencies.indices.contains(index) else { return nil }
         return image.dependencies[index].path
     }
 
     private static func lookup(_ symbol: String) -> UnsafeMutableRawPointer? {
-        if let exact = dlsym(RTLD_DEFAULT, symbol) {
+        guard let processHandle = dlopen(nil, RTLD_NOW) else {
+            return nil
+        }
+        defer { dlclose(processHandle) }
+
+        if let exact = dlsym(processHandle, symbol) {
             return exact
         }
+
         if symbol.hasPrefix("_") {
-            return dlsym(RTLD_DEFAULT, String(symbol.dropFirst()))
+            return dlsym(processHandle, String(symbol.dropFirst()))
         }
-        return dlsym(RTLD_DEFAULT, "_" + symbol)
+
+        return dlsym(processHandle, "_" + symbol)
     }
 }
