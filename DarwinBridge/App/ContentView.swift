@@ -168,6 +168,20 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
                         }
 
+                        Button("Run malloc → memcpy → strlen → free") {
+                            runtimeChainResult = JITExecutionBackend.runRuntimeChainTest()
+                        }
+
+                        if let runtimeChainResult {
+                            row("Runtime chain", runtimeChainResult.executed ? "executed" : "not executed")
+                            row("Chain result", runtimeChainResult.returnValue.map(String.init) ?? "—")
+                            row("Expected", "\(runtimeChainResult.expectedValue)")
+                            row("Chain ABI", runtimeChainResult.returnValue == runtimeChainResult.expectedValue ? "PASS" : "not passed")
+                            Text(runtimeChainResult.note)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
                         Text("This stage verifies that ARM64 guest code can call selected iOS libSystem/libc symbols using the native AArch64 ABI.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
