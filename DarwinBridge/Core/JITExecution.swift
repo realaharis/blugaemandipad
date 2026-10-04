@@ -196,3 +196,82 @@ extension JITExecutionBackend {
         return (info.kp_proc.p_flag & P_TRACED) != 0
     }
 }
+
+
+@_silgen_name("DBRuntimeChainAddress")
+private func DBRuntimeChainAddress() -> UnsafeMutableRawPointer?
+
+extension JITExecutionBackend {
+    static func runRuntimeChainTest() -> RuntimeCallResult {
+        guard isDebuggerAttachedForRuntime() else {
+            return RuntimeCallResult(debuggerAttached: false,
+                                     regionPrepared: false,
+                                     executed: false,
+                                     returnValue: nil,
+                                     expectedValue: 20,
+                                     note: "No live debugger is attached.")
+        }
+
+        guard let chainPointer = DBRuntimeChainAddress() else {
+            return RuntimeCallResult(debuggerAttached: true,
+                                     regionPrepared: false,
+                                     executed: false,
+                                     returnValue: nil,
+                                     expectedValue: 20,
+                                     note: "Runtime chain helper address is unavailable.")
+        }
+
+        let pageSize = Int(getpagesize())
+        var rx: UnsafeMutableRawPointer?
+        var rw: UnsafeMutableRawPointer?
+        let status = DBJIT26CreateDualMapping(pageSize, &rx, &rw)
+        guard status == 0, let executable = rx, let writable = rw else {
+            return RuntimeCallResult(debuggerAttached: true,
+                                     regionPrepared: false,
+                                     executed: false,
+                                     returnValue: nil,
+                                     expectedValue: 20,
+                                     note: "JIT26 runtime-chain page failed (status \(status)).")
+        }
+
+        let message = Array("DarwinBridge runtime\0".utf8)
+        let stringOffset = 0x100
+        _ = message.withUnsafeBytes { bytes in
+            memcpy(writable.advanced(by: stringOffset), bytes.baseAddress!, bytes.count)
+        }
+
+        // ABI-safe guest -> runtime bridge:
+        // save FP/LR, load C string and helper address, BLR, restore FP/LR, RET.
+        let instructions: [UInt32] = [
+            0xA9BF7BFD,
+            0x910003FD,
+            0x580000C0,
+            0x580000F0,
+            0xD63F0200,
+            0xA8C17BFD,
+            0xD65F03C0,
+            0xD503201F
+        ]
+        _ = instructions.withUnsafeBytes { bytes in
+            memcpy(writable, bytes.baseAddress!, bytes.count)
+        }
+
+        let stringAddress = UInt64(UInt(bitPattern: executable.advanced(by: stringOffset)))
+        let helperAddress = UInt64(UInt(bitPattern: chainPointer))
+        writable.advanced(by: 32).storeBytes(of: stringAddress.littleEndian, as: UInt64.self)
+        writable.advanced(by: 40).storeBytes(of: helperAddress.littleEndian, as: UInt64.self)
+
+        typealias GuestFunction = @convention(c) () -> UInt64
+        let function = unsafeBitCast(executable, to: GuestFunction.self)
+        let value = function()
+
+        return RuntimeCallResult(debuggerAttached: true,
+                                 regionPrepared: true,
+                                 executed: true,
+                                 returnValue: value,
+                                 expectedValue: 20,
+                                 note: value == 20
+                                    ? "Guest completed malloc → memcpy → strlen → free."
+                                    : "Runtime chain returned an unexpected value.")
+    }
+}
