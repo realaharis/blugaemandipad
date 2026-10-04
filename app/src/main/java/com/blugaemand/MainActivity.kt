@@ -1,5 +1,8 @@
 package com.blugaemand
 
+import com.blugaemand.hid.Ds4Touch
+import com.blugaemand.hid.Ds4Output
+import com.blugaemand.ui.Ds4Touchpad
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
@@ -86,6 +89,7 @@ class MainActivity : ComponentActivity() {
     private var service: HidGamepadService? by mutableStateOf(null)
 
     /** Stands in for the service's status flow until the bind lands. */
+    private val fallbackOutput = MutableStateFlow(Ds4Output())
     private val fallbackStatus = MutableStateFlow<HidStatus>(HidStatus.Initializing)
 
     private var bonded: List<HostOption> by mutableStateOf(emptyList())
@@ -177,6 +181,7 @@ class MainActivity : ComponentActivity() {
             BlugaemandTheme {
                 var openPanel by remember { mutableStateOf<TopPanel?>(null) }
                 val status by (service?.status ?: fallbackStatus).collectAsStateWithLifecycle()
+                val ds4Output by (service?.output ?: fallbackOutput).collectAsStateWithLifecycle()
 
                 val scope = rememberCoroutineScope()
                 val library by layoutStore.library
@@ -419,6 +424,9 @@ class MainActivity : ComponentActivity() {
                         },
                     )
 
+                    if (padLive) Ds4Touchpad(ds4Output, { service?.updateTouch(it) },
+                        Modifier.align(Alignment.Center).width(180.dp))
+
                     // Sits between the pad and the bar while a panel is open: dismisses on a
                     // touch anywhere else, and swallows that touch so it cannot also press a
                     // button underneath. Releasing the pad's held controls avoids leaving anything
@@ -541,6 +549,7 @@ class MainActivity : ComponentActivity() {
      * nothing about a panel having opened over the controls.
      */
     private fun releaseControls() {
+        service?.updateTouch(Ds4Touch())
         touchState = GamepadState.NEUTRAL
         aim = MotionAim.NONE
         service?.updateState(GamepadState.NEUTRAL)

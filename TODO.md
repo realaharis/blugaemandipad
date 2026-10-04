@@ -1,3 +1,11 @@
+# DS4 Begonia work
+
+- [x] Compact descriptor, gameplay reports, CRC, calibration, touch, motion and outputs
+- [x] Separate app package and guarded Magisk identity module
+- [x] GitHub Actions clean build, tests and downloadable test kit
+- [ ] Verify fresh iPad pairing and all controls on physical begonia
+- [ ] Validate sensor axes and latency on hardware
+
 # TODO
 
 Living backlog. Update as work lands — tick items off, move things between iterations, and add what

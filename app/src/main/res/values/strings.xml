@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Blugaemand</string>
+    <string name="app_name">Blugaemand DS4</string>
     <string name="notification_channel_name">Gamepad session</string>
     <string name="notification_channel_description">Shown while the phone is acting as a Bluetooth gamepad.</string>
     <string name="notification_title">Blugaemand gamepad</string>

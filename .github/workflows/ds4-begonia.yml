@@ -1,0 +1,45 @@
+name: DS4 Begonia build
+on:
+  push:
+    branches: [feat/ds4-full-begonia]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Clean build, unit tests and lint
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --max-workers=2 clean :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
+      - name: Verify packaged identity and signature
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test "$("$ANDROID_HOME/build-tools/36.0.0/aapt2" dump packagename "$APK")" = com.blugaemand.ds4begonia
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+      - name: Package test kit
+        run: python3 tools/package-ds4.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DS4-Begonia-v0.2-test-kit
+          path: build/ds4-delivery/*
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-reports
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results-debug.*
+          retention-days: 30

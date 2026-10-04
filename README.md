@@ -1,3 +1,7 @@
+# DS4 Begonia experimental branch
+
+See [installation guide (فارسی)](docs/DS4-BEGONIA.fa.md) and [protocol and limitations](docs/DS4-PROTOCOL.md). Hardware pairing on iPad is pending. The upstream description below concerns the original generic controller.
+
 # Blugaemand
 
 Turns an Android phone into a real Bluetooth gamepad. The host sees a standard HID controller — no

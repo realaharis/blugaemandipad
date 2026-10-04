@@ -2,138 +2,158 @@ package com.blugaemand.hid
 
 import java.util.zip.CRC32
 
-/**
- * DualShock 4 Bluetooth-compatible HID profile for iPadOS testing.
- *
- * The report descriptor is the DS4 descriptor used by Apple's WebKit gamepad tests. Bluetooth
- * input uses report 0x11, matching a physical DS4's extended Bluetooth report framing.
- */
-object DualShock4Profile : GamepadProfile {
-    override val id: String = "dualshock4-bluetooth"
-    override val sdpName: String = "Wireless Controller"
-    override val sdpDescription: String = "Wireless Controller"
-    override val sdpProvider: String = "Sony Interactive Entertainment"
+/** Experimental DS4 gameplay protocol. Console authentication and audio are not implemented. */
+class DualShock4Profile : GamepadProfile {
+    override val id = "ds4-begonia-v2"
+    override val sdpName = "Wireless Controller"
+    override val sdpDescription = "Wireless Controller"
+    override val sdpProvider = "Sony Interactive Entertainment"
     override val subclass: Byte = 0x08
-    override val reportId: Int = 0x11
-    override val requiredAdapterName: String = "Wireless Controller"
+    override val requiredAdapterName = "Wireless Controller"
+    @Volatile private var extended = false
+    override val reportId: Int get() = if (extended) 0x11 else 0x01
+    private var sequence = 0
+    @Volatile var motion = Ds4Motion()
+    @Volatile var touch = Ds4Touch()
+    @Volatile var batteryPercent = 100
+    @Volatile var charging = false
+    @Volatile var output = Ds4Output()
+        private set
+    private var lastOutput = ByteArray(77)
 
-    const val REPORT_BODY_SIZE = 77
-
-    override val descriptor: ByteArray = byteArrayOf(
-        0x05.b, 0x01.b, 0x09.b, 0x05.b, 0xA1.b, 0x01.b, 0x85.b, 0x01.b, 0x09.b, 0x30.b, 0x09.b, 0x31.b, 0x09.b, 0x32.b, 0x09.b, 0x35.b,
-        0x15.b, 0x00.b, 0x26.b, 0xFF.b, 0x00.b, 0x75.b, 0x08.b, 0x95.b, 0x04.b, 0x81.b, 0x02.b, 0x09.b, 0x39.b, 0x15.b, 0x00.b, 0x25.b,
-        0x07.b, 0x75.b, 0x04.b, 0x95.b, 0x01.b, 0x81.b, 0x42.b, 0x05.b, 0x09.b, 0x19.b, 0x01.b, 0x29.b, 0x0E.b, 0x15.b, 0x00.b, 0x25.b,
-        0x01.b, 0x75.b, 0x01.b, 0x95.b, 0x0E.b, 0x81.b, 0x02.b, 0x75.b, 0x06.b, 0x95.b, 0x01.b, 0x81.b, 0x01.b, 0x05.b, 0x01.b, 0x09.b,
-        0x33.b, 0x09.b, 0x34.b, 0x15.b, 0x00.b, 0x26.b, 0xFF.b, 0x00.b, 0x75.b, 0x08.b, 0x95.b, 0x02.b, 0x81.b, 0x02.b, 0x06.b, 0x04.b,
-        0xFF.b, 0x85.b, 0x02.b, 0x09.b, 0x24.b, 0x95.b, 0x24.b, 0xB1.b, 0x02.b, 0x85.b, 0xA3.b, 0x09.b, 0x25.b, 0x95.b, 0x30.b, 0xB1.b,
-        0x02.b, 0x85.b, 0x05.b, 0x09.b, 0x26.b, 0x95.b, 0x28.b, 0xB1.b, 0x02.b, 0x85.b, 0x06.b, 0x09.b, 0x27.b, 0x95.b, 0x34.b, 0xB1.b,
-        0x02.b, 0x85.b, 0x07.b, 0x09.b, 0x28.b, 0x95.b, 0x30.b, 0xB1.b, 0x02.b, 0x85.b, 0x08.b, 0x09.b, 0x29.b, 0x95.b, 0x2F.b, 0xB1.b,
-        0x02.b, 0x85.b, 0x09.b, 0x09.b, 0x2A.b, 0x95.b, 0x13.b, 0xB1.b, 0x02.b, 0x06.b, 0x03.b, 0xFF.b, 0x85.b, 0x03.b, 0x09.b, 0x21.b,
-        0x95.b, 0x26.b, 0xB1.b, 0x02.b, 0x85.b, 0x04.b, 0x09.b, 0x22.b, 0x95.b, 0x2E.b, 0xB1.b, 0x02.b, 0x85.b, 0xF0.b, 0x09.b, 0x47.b,
-        0x95.b, 0x3F.b, 0xB1.b, 0x02.b, 0x85.b, 0xF1.b, 0x09.b, 0x48.b, 0x95.b, 0x3F.b, 0xB1.b, 0x02.b, 0x85.b, 0xF2.b, 0x09.b, 0x49.b,
-        0x95.b, 0x0F.b, 0xB1.b, 0x02.b, 0x06.b, 0x00.b, 0xFF.b, 0x85.b, 0x11.b, 0x09.b, 0x20.b, 0x15.b, 0x00.b, 0x26.b, 0xFF.b, 0x00.b,
-        0x75.b, 0x08.b, 0x95.b, 0x4D.b, 0x81.b, 0x02.b, 0x09.b, 0x21.b, 0x91.b, 0x02.b, 0x85.b, 0x12.b, 0x09.b, 0x22.b, 0x95.b, 0x8D.b,
-        0x81.b, 0x02.b, 0x09.b, 0x23.b, 0x91.b, 0x02.b, 0x85.b, 0x13.b, 0x09.b, 0x24.b, 0x95.b, 0xCD.b, 0x81.b, 0x02.b, 0x09.b, 0x25.b,
-        0x91.b, 0x02.b, 0x85.b, 0x14.b, 0x09.b, 0x26.b, 0x96.b, 0x0D.b, 0x01.b, 0x81.b, 0x02.b, 0x09.b, 0x27.b, 0x91.b, 0x02.b, 0x85.b,
-        0x15.b, 0x09.b, 0x28.b, 0x96.b, 0x4D.b, 0x01.b, 0x81.b, 0x02.b, 0x09.b, 0x29.b, 0x91.b, 0x02.b, 0x85.b, 0x16.b, 0x09.b, 0x2A.b,
-        0x96.b, 0x8D.b, 0x01.b, 0x81.b, 0x02.b, 0x09.b, 0x2B.b, 0x91.b, 0x02.b, 0x85.b, 0x17.b, 0x09.b, 0x2C.b, 0x96.b, 0xCD.b, 0x01.b,
-        0x81.b, 0x02.b, 0x09.b, 0x2D.b, 0x91.b, 0x02.b, 0x85.b, 0x18.b, 0x09.b, 0x2E.b, 0x96.b, 0x0D.b, 0x02.b, 0x81.b, 0x02.b, 0x09.b,
-        0x2F.b, 0x91.b, 0x02.b, 0x85.b, 0x19.b, 0x09.b, 0x30.b, 0x96.b, 0x22.b, 0x02.b, 0x81.b, 0x02.b, 0x09.b, 0x31.b, 0x91.b, 0x02.b,
-        0x06.b, 0x80.b, 0xFF.b, 0x85.b, 0x82.b, 0x09.b, 0x22.b, 0x95.b, 0x3F.b, 0xB1.b, 0x02.b, 0x85.b, 0x83.b, 0x09.b, 0x23.b, 0xB1.b,
-        0x02.b, 0x85.b, 0x84.b, 0x09.b, 0x24.b, 0xB1.b, 0x02.b, 0x85.b, 0x90.b, 0x09.b, 0x30.b, 0xB1.b, 0x02.b, 0x85.b, 0x91.b, 0x09.b,
-        0x31.b, 0xB1.b, 0x02.b, 0x85.b, 0x92.b, 0x09.b, 0x32.b, 0xB1.b, 0x02.b, 0x85.b, 0x93.b, 0x09.b, 0x33.b, 0xB1.b, 0x02.b, 0x85.b,
-        0x94.b, 0x09.b, 0x34.b, 0xB1.b, 0x02.b, 0x85.b, 0xA0.b, 0x09.b, 0x40.b, 0xB1.b, 0x02.b, 0x85.b, 0xA4.b, 0x09.b, 0x44.b, 0xB1.b,
-        0x02.b, 0x85.b, 0xA7.b, 0x09.b, 0x45.b, 0xB1.b, 0x02.b, 0x85.b, 0xA8.b, 0x09.b, 0x45.b, 0xB1.b, 0x02.b, 0x85.b, 0xA9.b, 0x09.b,
-        0x45.b, 0xB1.b, 0x02.b, 0x85.b, 0xAA.b, 0x09.b, 0x45.b, 0xB1.b, 0x02.b, 0x85.b, 0xAB.b, 0x09.b, 0x45.b, 0xB1.b, 0x02.b, 0x85.b,
-        0xAC.b, 0x09.b, 0x45.b, 0xB1.b, 0x02.b, 0x85.b, 0xAD.b, 0x09.b, 0x45.b, 0xB1.b, 0x02.b, 0x85.b, 0xB3.b, 0x09.b, 0x45.b, 0xB1.b,
-        0x02.b, 0x85.b, 0xB4.b, 0x09.b, 0x46.b, 0xB1.b, 0x02.b, 0x85.b, 0xB5.b, 0x09.b, 0x47.b, 0xB1.b, 0x02.b, 0x85.b, 0xD0.b, 0x09.b,
-        0x40.b, 0xB1.b, 0x02.b, 0x85.b, 0xD4.b, 0x09.b, 0x44.b, 0xB1.b, 0x02.b, 0xC0.b,
+    // 115 bytes: avoids the SDP attr_len=454/max_list_len=246 failure in the begonia log.
+    // Preserve gameplay usages and packet layout, omit unsupported audio/vendor/auth reports.
+    override val descriptor = hex(
+        "05 01 09 05 A1 01 85 01 09 30 09 31 09 32 09 35 " +
+        "15 00 26 FF 00 75 08 95 04 81 02 " +
+        "09 39 25 07 75 04 95 01 81 42 " +
+        "05 09 19 01 29 0E 25 01 75 01 95 0E 81 02 " +
+        "75 06 95 01 81 01 " +
+        "05 01 09 33 09 34 26 FF 00 75 08 95 02 81 02 " +
+        "06 04 FF 85 02 09 24 95 24 B1 02 " +
+        "85 05 09 26 95 28 B1 02 " +
+        "85 A3 09 25 95 30 B1 02 " +
+        "06 00 FF 85 11 09 20 95 4D 81 02 09 21 91 02 C0"
     )
 
-    override fun encode(state: GamepadState): ByteArray {
-        // Android's sendReport() sends the report ID separately, so this is bytes 1..77 of the
-        // 78-byte DS4 Bluetooth input packet.
-        val out = ByteArray(REPORT_BODY_SIZE)
+    @Synchronized fun resetSession() {
+        extended = false; sequence = 0; touch = Ds4Touch(); output = Ds4Output()
+        lastOutput = ByteArray(77)
+    }
+    override fun encode(state: GamepadState): ByteArray = inputReport(reportId, state)!!
 
-        // Bluetooth framing bytes. The controller payload starts at full packet offset 3.
-        out[0] = 0xC0.toByte()
-        out[1] = 0x00
-
-        out[2] = GamepadState.clampAxis(state.leftStickX).toByte()
-        out[3] = GamepadState.clampAxis(state.leftStickY).toByte()
-        out[4] = GamepadState.clampAxis(state.rightStickX).toByte()
-        out[5] = GamepadState.clampAxis(state.rightStickY).toByte()
-
-        var b0 = state.hat.value and 0x0F
-        if (state.isPressed(GamepadButton.WEST))  b0 = b0 or 0x10 // Square
-        if (state.isPressed(GamepadButton.SOUTH)) b0 = b0 or 0x20 // Cross
-        if (state.isPressed(GamepadButton.EAST))  b0 = b0 or 0x40 // Circle
-        if (state.isPressed(GamepadButton.NORTH)) b0 = b0 or 0x80 // Triangle
-        out[6] = b0.toByte()
-
+    @Synchronized fun inputReport(id: Int, state: GamepadState, nowNanos: Long = System.nanoTime()): ByteArray? {
+        if (id != 0x01 && id != 0x11) return null
+        if (id == 0x11) extended = true
+        val out = ByteArray(if (id == 0x11) 77 else 9)
+        val p = if (id == 0x11) 2 else 0
+        if (id == 0x11) out[0] = 0xC0.toByte()
+        out[p] = GamepadState.clampAxis(state.leftStickX).toByte()
+        out[p+1] = GamepadState.clampAxis(state.leftStickY).toByte()
+        out[p+2] = GamepadState.clampAxis(state.rightStickX).toByte()
+        out[p+3] = GamepadState.clampAxis(state.rightStickY).toByte()
+        var b0 = state.hat.value and 15
+        // Existing layouts use Linux aliases: NORTH is X/Square, WEST is Y/Triangle.
+        listOf(GamepadButton.NORTH, GamepadButton.SOUTH, GamepadButton.EAST, GamepadButton.WEST)
+            .forEachIndexed { i, b -> if (state.isPressed(b)) b0 = b0 or (0x10 shl i) }
+        out[p+4] = b0.toByte()
         var b1 = 0
-        if (state.isPressed(GamepadButton.L1))    b1 = b1 or 0x01
-        if (state.isPressed(GamepadButton.R1))    b1 = b1 or 0x02
-        if (state.isPressed(GamepadButton.L2) || state.leftTrigger > 31)  b1 = b1 or 0x04
-        if (state.isPressed(GamepadButton.R2) || state.rightTrigger > 31) b1 = b1 or 0x08
-        if (state.isPressed(GamepadButton.BACK))  b1 = b1 or 0x10 // Share
-        if (state.isPressed(GamepadButton.START)) b1 = b1 or 0x20 // Options
-        if (state.isPressed(GamepadButton.L3))    b1 = b1 or 0x40
-        if (state.isPressed(GamepadButton.R3))    b1 = b1 or 0x80
-        out[7] = b1.toByte()
-
-        var b2 = 0
-        if (state.isPressed(GamepadButton.GUIDE)) b2 = b2 or 0x01 // PS
-        out[8] = b2.toByte()
-
-        out[9] = GamepadState.clampAxis(state.leftTrigger).toByte()
-        out[10] = GamepadState.clampAxis(state.rightTrigger).toByte()
-
-        // Battery status byte: cable absent, ten bars available.
-        out[31] = 0x0A
-        // No touch packets.
-        out[34] = 0x00
-
-        writeBluetoothCrc(out)
+        listOf(GamepadButton.L1, GamepadButton.R1, GamepadButton.L2, GamepadButton.R2,
+            GamepadButton.BACK, GamepadButton.START, GamepadButton.L3, GamepadButton.R3)
+            .forEachIndexed { i, b -> if (state.isPressed(b)) b1 = b1 or (1 shl i) }
+        if (state.leftTrigger > 31) b1 = b1 or 4
+        if (state.rightTrigger > 31) b1 = b1 or 8
+        out[p+5] = b1.toByte()
+        val t = touch
+        out[p+6] = ((if (state.isPressed(GamepadButton.GUIDE)) 1 else 0) or
+            (if (t.clicked) 2 else 0) or ((sequence and 63) shl 2)).toByte()
+        out[p+7] = GamepadState.clampAxis(state.leftTrigger).toByte()
+        out[p+8] = GamepadState.clampAxis(state.rightTrigger).toByte()
+        if (id == 0x11) {
+            put16(out, 11, ((nowNanos / 1000L * 3L / 16L) and 65535).toInt())
+            val m = motion
+            listOf(m.gx,m.gy,m.gz,m.ax,m.ay,m.az).forEachIndexed { i,v -> put16(out,14+i*2,v.coerceIn(-32768,32767)) }
+            out[31] = ((batteryPercent.coerceIn(0,100)/10) or (if (charging) 0x10 else 0)).toByte()
+            out[34] = 1; out[35] = sequence.toByte()
+            writeTouch(out,36,t.first); writeTouch(out,40,t.second)
+            writeCrc(0xA1,id,out)
+        }
+        sequence = (sequence+1) and 255
         return out
     }
 
-    override fun featureReport(reportId: Int): ByteArray? {
-        val size = when (reportId and 0xFF) {
-            0x02 -> 36
-            0xA3 -> 48
-            0x05 -> 40
-            0x06 -> 52
-            0x07 -> 48
-            0x08 -> 47
-            0x09 -> 19
-            0x03 -> 38
-            0x04 -> 46
-            0xF0, 0xF1 -> 63
-            0xF2 -> 15
-            0x82, 0x83, 0x84, 0x90, 0x91, 0x92, 0x93, 0x94,
-            0xA0, 0xA4, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD,
-            0xB3, 0xB4, 0xB5, 0xD0, 0xD4 -> 63
-            else -> return null
+    @Synchronized override fun featureReport(reportId: Int): ByteArray? = when (reportId and 255) {
+        0x02,0x05 -> {
+            extended = true
+            val bt = (reportId and 255) == 5
+            ByteArray(if (bt) 40 else 36).also { b ->
+                // Ideal virtual sensors: 16 counts/degree/s, 8192 counts/g, zero bias.
+                val gyro = if (bt) listOf(16000,16000,16000,-16000,-16000,-16000)
+                    else listOf(16000,-16000,16000,-16000,16000,-16000)
+                gyro.forEachIndexed { i,v -> put16(b,6+i*2,v) }
+                put16(b,18,1000); put16(b,20,1000)
+                listOf(8192,-8192,8192,-8192,8192,-8192).forEachIndexed { i,v -> put16(b,22+i*2,v) }
+                if (bt) writeCrc(0xA3,5,b)
+            }
         }
-        return ByteArray(size)
+        0xA3 -> ByteArray(48).also {
+            // Virtual firmware metadata, not extracted Sony firmware. A3 does not carry CRC.
+            "Oct 03 2026".toByteArray(Charsets.US_ASCII).copyInto(it,0)
+            "00:00:00".toByteArray(Charsets.US_ASCII).copyInto(it,16)
+            put16(it,34,0x0100); put16(it,40,0x0100)
+        }
+        else -> null
     }
+    @Synchronized fun outputReport(id: Int): ByteArray? =
+        if (id == 17) lastOutput.copyOf().also { writeCrc(0xA2,id,it) } else null
 
-    override fun handleOutputReport(reportId: Int, data: ByteArray?): Boolean =
-        reportId in 0x11..0x19
-
-    private fun writeBluetoothCrc(body: ByteArray) {
-        val crc = CRC32()
-        crc.update(0xA1) // Sony input-report seed.
-        crc.update(reportId)
-        crc.update(body, 0, body.size - 4)
-        val value = crc.value
-        val p = body.size - 4
-        body[p] = (value and 0xFF).toByte()
-        body[p + 1] = ((value ushr 8) and 0xFF).toByte()
-        body[p + 2] = ((value ushr 16) and 0xFF).toByte()
-        body[p + 3] = ((value ushr 24) and 0xFF).toByte()
+    @Synchronized override fun handleOutputReport(reportId: Int, data: ByteArray?): Boolean {
+        if (reportId != 17 || data == null || data.size != 77) return false
+        val hw = data[0].toInt() and 255
+        if (hw and 0x40 != 0 && !validCrc(0xA2,reportId,data)) return false
+        lastOutput = data.copyOf()
+        if (hw and 0x80 != 0) {
+            extended = true
+            val flags = data[2].toInt() and 255
+            fun u(i: Int) = data[i].toInt() and 255
+            output = output.copy(
+                smallMotor = if (flags and 1 != 0) u(5) else output.smallMotor,
+                largeMotor = if (flags and 1 != 0) u(6) else output.largeMotor,
+                red = if (flags and 2 != 0) u(7) else output.red,
+                green = if (flags and 2 != 0) u(8) else output.green,
+                blue = if (flags and 2 != 0) u(9) else output.blue,
+                flashOn = if (flags and 4 != 0) u(10) else output.flashOn,
+                flashOff = if (flags and 4 != 0) u(11) else output.flashOff)
+        }
+        return true
+    }
+    companion object {
+        private fun hex(s: String) = s.split(' ').map { it.toInt(16).toByte() }.toByteArray()
+        private fun put16(b: ByteArray,p: Int,v: Int) { b[p]=v.toByte(); b[p+1]=(v shr 8).toByte() }
+        private fun writeTouch(b: ByteArray,p: Int,t: Ds4Contact?) {
+            if (t == null) { b[p]=0x80.toByte(); return }
+            val x=t.x.coerceIn(0,1919); val y=t.y.coerceIn(0,941)
+            b[p]=(t.id and 127).toByte(); b[p+1]=x.toByte()
+            b[p+2]=((x shr 8) or ((y and 15) shl 4)).toByte(); b[p+3]=(y shr 4).toByte()
+        }
+        fun crc(seed: Int,id: Int,b: ByteArray): Long = CRC32().apply {
+            update(seed); update(id); update(b,0,b.size-4)
+        }.value
+        fun writeCrc(seed: Int,id: Int,b: ByteArray) {
+            val c=crc(seed,id,b)
+            for (i in 0..3) b[b.size-4+i]=(c ushr (i*8)).toByte()
+        }
+        fun validCrc(seed: Int,id: Int,b: ByteArray): Boolean {
+            if (b.size<4) return false
+            val c=crc(seed,id,b)
+            return (0..3).all { b[b.size-4+it] == (c ushr (it*8)).toByte() }
+        }
+        // HIDP BufferSize includes Report ID, which Android inserts separately.
+        fun boundedReply(b: ByteArray,bufferSize: Int): ByteArray =
+            if (bufferSize>0) b.copyOfRange(0,minOf(b.size,bufferSize-1)) else b
     }
 }
-
-private inline val Int.b: Byte get() = this.toByte()
+data class Ds4Motion(val gx: Int=0,val gy: Int=0,val gz: Int=0,val ax: Int=0,val ay: Int=0,val az: Int=8192)
+data class Ds4Contact(val id: Int,val x: Int,val y: Int)
+data class Ds4Touch(val first: Ds4Contact?=null,val second: Ds4Contact?=null,val clicked: Boolean=false)
+data class Ds4Output(val smallMotor: Int=0,val largeMotor: Int=0,val red: Int=0,val green: Int=0,val blue: Int=64,val flashOn: Int=0,val flashOff: Int=0)

@@ -36,15 +36,16 @@ val releaseKeystore: Map<String, String>? = run {
 android {
     namespace = "com.blugaemand"
     compileSdk = 36
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
-        applicationId = "com.blugaemand"
+        applicationId = "com.blugaemand.ds4begonia"
         // BluetoothHidDevice, the API that lets the phone act as an HID peripheral,
         // was added in API 28. There is no supported way to do this below that.
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0-ds4-begonia"
     }
 
     signingConfigs {

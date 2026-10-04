@@ -57,7 +57,13 @@ class HidGamepadService : Service() {
 
     // iPadOS test mode: present the HID service using the DualShock 4 descriptor and report
     // protocol rather than relying on generic-controller classification.
-    private val profile: GamepadProfile = DualShock4Profile
+    private val profile = DualShock4Profile()
+    private val hardware by lazy { Ds4Hardware(this, profile) }
+    private val _output = MutableStateFlow(Ds4Output())
+    val output: StateFlow<Ds4Output> = _output.asStateFlow()
+    private var generation = 0
+    @Volatile private var destroyed = false
+    fun updateTouch(touch: Ds4Touch) { profile.touch = touch }
 
     /**
      * Reports go out on a dedicated thread. The Bluetooth stack call is blocking, and sharing a
@@ -70,8 +76,8 @@ class HidGamepadService : Service() {
     private var sendJob: Job? = null
 
     private var bluetoothAdapter: BluetoothAdapter? = null
-    private var hidDevice: BluetoothHidDevice? = null
-    private var connectedHost: BluetoothDevice? = null
+    @Volatile private var hidDevice: BluetoothHidDevice? = null
+    @Volatile private var connectedHost: BluetoothDevice? = null
 
     /** Latest state the UI has produced. Read by the send loop, written by the touch handler. */
     @Volatile
@@ -133,7 +139,7 @@ class HidGamepadService : Service() {
             this,
             adapterStateReceiver,
             IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
-            ContextCompat.RECEIVER_NOT_EXPORTED,
+            ContextCompat.RECEIVER_EXPORTED,
         )
         initialise()
     }
@@ -153,13 +159,11 @@ class HidGamepadService : Service() {
     }
 
     override fun onDestroy() {
+        destroyed = true
         runCatching { unregisterReceiver(adapterStateReceiver) }
-        sendJob?.cancel()
-        scope.cancel()
         releaseProfile()
-        // BluetoothHidDevice can enqueue a final callback after unregisterApp(). Keep the
-        // callback executor alive through service teardown; the process will reclaim it. Closing
-        // it here caused RejectedExecutionException in real-device logs.
+        scope.cancel()
+        reportExecutor.shutdown()
         super.onDestroy()
     }
 
@@ -226,7 +230,7 @@ class HidGamepadService : Service() {
         }
 
         _status.value = HidStatus.Initializing
-        val requested = adapter.getProfileProxy(this, profileListener, BluetoothProfile.HID_DEVICE)
+        val requested = adapter.getProfileProxy(this, profileListener(++generation), BluetoothProfile.HID_DEVICE)
         if (!requested) {
             // The profile is not part of this build of Android. Nothing the app can do about it.
             _status.value = HidStatus.Unsupported(
@@ -235,14 +239,19 @@ class HidGamepadService : Service() {
         }
     }
 
-    private val profileListener = object : BluetoothProfile.ServiceListener {
+    private fun profileListener(token: Int) = object : BluetoothProfile.ServiceListener {
         override fun onServiceConnected(profileId: Int, proxy: BluetoothProfile) {
             if (profileId != BluetoothProfile.HID_DEVICE) return
+            if (destroyed || token != generation) {
+                bluetoothAdapter?.closeProfileProxy(profileId, proxy)
+                return
+            }
             hidDevice = proxy as BluetoothHidDevice
-            registerApp()
+            registerApp(token)
         }
 
         override fun onServiceDisconnected(profileId: Int) {
+            if (destroyed || token != generation) return
             if (profileId != BluetoothProfile.HID_DEVICE) return
             hidDevice = null
             connectedHost = null
@@ -252,7 +261,7 @@ class HidGamepadService : Service() {
     }
 
     @SuppressLint("MissingPermission") // Guarded by withBluetoothPermission.
-    private fun registerApp() = withBluetoothPermission(Unit) {
+    private fun registerApp(token: Int) = withBluetoothPermission(Unit) {
         val device = hidDevice ?: return@withBluetoothPermission
 
         profile.requiredAdapterName?.let { name ->
@@ -268,26 +277,31 @@ class HidGamepadService : Service() {
         )
 
         // Null QoS lets the stack pick sensible defaults, which every host we target accepts.
-        val ok = device.registerApp(sdp, null, null, reportExecutor, hidCallback)
+        Log.i(TAG, "REGISTER ${profile.id} descriptorBytes=${profile.descriptor.size}")
+        val ok = device.registerApp(sdp, null, null, mainExecutor, hidCallback(token))
         if (!ok) {
             _status.value = HidStatus.Error("Could not register the gamepad with the Bluetooth stack.")
         }
     }
 
     @SuppressLint("MissingPermission") // Guarded by withBluetoothPermission.
-    private fun releaseProfile() = withBluetoothPermission(Unit) {
+    private fun releaseProfile() {
+        generation++
         stopSendLoop()
-        hidDevice?.let { device ->
-            runCatching { device.unregisterApp() }
-            bluetoothAdapter?.closeProfileProxy(BluetoothProfile.HID_DEVICE, device)
+        withBluetoothPermission(Unit) {
+            hidDevice?.let { device ->
+                runCatching { device.unregisterApp() }
+                bluetoothAdapter?.closeProfileProxy(BluetoothProfile.HID_DEVICE, device)
+            }
         }
         hidDevice = null
         connectedHost = null
     }
 
-    private val hidCallback = object : BluetoothHidDevice.Callback() {
+    private fun hidCallback(token: Int) = object : BluetoothHidDevice.Callback() {
 
         override fun onAppStatusChanged(pluggedDevice: BluetoothDevice?, registered: Boolean) {
+            if (destroyed || token != generation) return
             Log.i(TAG, "App status changed: registered=$registered")
             if (registered) {
                 _status.value = HidStatus.Advertising
@@ -299,10 +313,14 @@ class HidGamepadService : Service() {
         }
 
         override fun onConnectionStateChanged(device: BluetoothDevice?, state: Int) {
+            if (destroyed || token != generation) return
             Log.i(TAG, "Connection state changed: $state")
             when (state) {
                 BluetoothProfile.STATE_CONNECTED -> {
+                    profile.resetSession()
+                    desiredState = GamepadState.NEUTRAL
                     connectedHost = device
+                    hardware.start()
                     lastSentReport = null // Force a full report so the host sees a known baseline.
                     startSendLoop()
                     _status.value = HidStatus.Connected(device.displayName())
@@ -323,61 +341,35 @@ class HidGamepadService : Service() {
 
         @SuppressLint("MissingPermission")
         override fun onGetReport(device: BluetoothDevice?, type: Byte, id: Byte, bufferSize: Int) {
-            // Windows does issue GET_REPORT during enumeration and will stall waiting for an
-            // answer, so this must always reply with something.
+            if (destroyed || token != generation || device == null) return
             val hid = hidDevice ?: return
-            if (device == null) return
-            when (type) {
-                BluetoothHidDevice.REPORT_TYPE_INPUT -> {
-                    hid.replyReport(device, type, id, profile.encode(desiredState))
-                }
-
-                BluetoothHidDevice.REPORT_TYPE_FEATURE -> {
-                    val feature = profile.featureReport(id.toInt())
-                    if (feature != null) {
-                        hid.replyReport(device, type, id, feature)
-                    } else {
-                        hid.reportError(device, BluetoothHidDevice.ERROR_RSP_UNSUPPORTED_REQ)
-                    }
-                }
-
-                BluetoothHidDevice.REPORT_TYPE_OUTPUT -> {
-                    if (profile.handleOutputReport(id.toInt() and 0xFF, null)) {
-                        hid.replyReport(device, type, id, byteArrayOf())
-                    } else {
-                        hid.reportError(device, BluetoothHidDevice.ERROR_RSP_UNSUPPORTED_REQ)
-                    }
-                }
-
-                else -> hid.reportError(device, BluetoothHidDevice.ERROR_RSP_UNSUPPORTED_REQ)
+            val reportId = id.toInt() and 255
+            Log.i(TAG, "GET_REPORT type=$type id=$reportId max=$bufferSize")
+            val body = when (type) {
+                BluetoothHidDevice.REPORT_TYPE_INPUT -> profile.inputReport(reportId, desiredState)
+                BluetoothHidDevice.REPORT_TYPE_FEATURE -> profile.featureReport(reportId)
+                BluetoothHidDevice.REPORT_TYPE_OUTPUT -> profile.outputReport(reportId)
+                else -> null
             }
+            if (body == null) hid.reportError(device, BluetoothHidDevice.ERROR_RSP_INVALID_RPT_ID)
+            else hid.replyReport(device, type, id, DualShock4Profile.boundedReply(body, bufferSize))
         }
 
         @SuppressLint("MissingPermission")
         override fun onSetReport(device: BluetoothDevice?, type: Byte, id: Byte, data: ByteArray?) {
-            val hid = hidDevice ?: return
-            if (device == null) return
-
-            if (type == BluetoothHidDevice.REPORT_TYPE_OUTPUT &&
-                profile.handleOutputReport(id.toInt() and 0xFF, data)
-            ) {
-                // SET_REPORT is a control transfer; Android's callback has no success-reply API.
-                // Returning without reportError acknowledges the accepted output report.
-                return
-            }
-
-            hid.reportError(device, BluetoothHidDevice.ERROR_RSP_UNSUPPORTED_REQ)
+            if (destroyed || token != generation || device == null) return
+            val accepted = type == BluetoothHidDevice.REPORT_TYPE_OUTPUT && acceptOutput(id.toInt() and 255, data)
+            hidDevice?.reportError(device, if (accepted) BluetoothHidDevice.ERROR_RSP_SUCCESS
+                else BluetoothHidDevice.ERROR_RSP_UNSUPPORTED_REQ)
         }
 
-        @SuppressLint("MissingPermission")
         override fun onInterruptData(device: BluetoothDevice?, reportId: Byte, data: ByteArray?) {
-            if (device == null) return
-            // Apple may deliver player-LED output through the interrupt channel instead of
-            // SET_REPORT. There is no response packet for interrupt output; consume it quietly.
-            profile.handleOutputReport(reportId.toInt() and 0xFF, data)
+            if (destroyed || token != generation || device == null) return
+            if (!acceptOutput(reportId.toInt() and 255, data)) Log.w(TAG, "Rejected output report")
         }
 
         override fun onVirtualCableUnplug(device: BluetoothDevice?) {
+            if (destroyed || token != generation) return
             Log.i(TAG, "Host unplugged the virtual cable")
             connectedHost = null
             stopSendLoop()
@@ -385,27 +377,14 @@ class HidGamepadService : Service() {
         }
     }
 
-    // -- Report pump ------------------------------------------------------------------------
+    private fun acceptOutput(id: Int, data: ByteArray?): Boolean {
+        if (!profile.handleOutputReport(id, data)) return false
+        _output.value = profile.output
+        hardware.applyOutput(profile.output)
+        return true
+    }
 
-    /**
-     * Puts a report on the wire when something changes, and never more often than [MIN_SEND_GAP_MS]
-     * apart.
-     *
-     * Sending straight from the touch handler would put a report on the wire for every pointer
-     * move — hundreds per second across several fingers — which saturates the L2CAP interrupt
-     * channel and shows up as lag rather than responsiveness. So the rate is capped. But the cap is
-     * applied *after* a send rather than by polling on a timer: a poll makes every change wait for
-     * the next tick, which costs an isolated button press half the interval on average and the
-     * whole of it at worst, for nothing — there was no traffic to coalesce it with. Waiting on a
-     * change and then holding the line for the gap gives the same ceiling on the wire, and gives a
-     * press that arrives into a quiet channel no wait at all.
-     *
-     * It also means an idle pad wakes nothing up, where the poll ran a hundred times a second
-     * through a pause in play.
-     *
-     * How long a change really waits here is measured rather than reasoned about; see
-     * [LatencyProbe].
-     */
+    // Periodic reports carry fresh timestamps, motion and touch even while buttons are idle.
     private fun startSendLoop() {
         if (sendJob?.isActive == true) return
         sendJob = scope.launch(reportExecutor.asCoroutineDispatcher()) {
@@ -420,10 +399,10 @@ class HidGamepadService : Service() {
                 // first pass through is unconditional rather than waiting for a finger to arrive.
                 changes.trySend(Unit)
                 while (isActive) {
-                    changes.receive()
-                    val sent = sendIfChanged()
+                    changes.tryReceive()
+                    sendIfChanged()
                     logLatencyPeriodically()
-                    if (sent) delay(MIN_SEND_GAP_MS)
+                    delay(MIN_SEND_GAP_MS)
                 }
             } finally {
                 // The tail of the session, which is otherwise the window most likely to be thrown
@@ -435,6 +414,9 @@ class HidGamepadService : Service() {
     }
 
     private fun stopSendLoop() {
+        hardware.stop()
+        profile.touch = Ds4Touch()
+        _output.value = Ds4Output()
         sendJob?.cancel()
         sendJob = null
         lastSentReport = null
@@ -455,14 +437,19 @@ class HidGamepadService : Service() {
         val queuedAt = pendingSinceNanos
         pendingSinceNanos = 0L
 
-        val report = profile.encode(desiredState)
-        if (report.contentEquals(lastSentReport)) return false
+        val id = profile.reportId
+        val report = profile.inputReport(id, desiredState) ?: return false
 
         val startedAt = System.nanoTime()
-        val ok = runCatching { hid.sendReport(host, profile.reportId, report) }
-            .onSuccess { lastSentReport = report }
+        val ok = runCatching { hid.sendReport(host, id, report) }
+            .onSuccess { queued ->
+                if (queued) {
+                    if (lastSentReport?.size != report.size) Log.i(TAG, "INPUT_ACTIVE id=$id bytes=${report.size}")
+                    lastSentReport = report
+                }
+            }
             .onFailure { Log.w(TAG, "sendReport failed", it) }
-            .isSuccess
+            .getOrDefault(false)
         val finishedAt = System.nanoTime()
 
         if (queuedAt != 0L) latency.record(startedAt - queuedAt, finishedAt - startedAt)

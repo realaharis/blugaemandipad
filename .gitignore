@@ -15,3 +15,5 @@ local_only/
 keystore.properties
 *.jks
 *.keystore
+
+.kotlin/

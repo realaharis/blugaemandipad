@@ -75,6 +75,7 @@ fun ConnectionPanel(
         } else {
             OutlinedButton(
                 onClick = onMakeDiscoverable,
+                enabled = status is HidStatus.Advertising || status is HidStatus.Connected,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Make discoverable to pair", fontSize = 12.sp)
