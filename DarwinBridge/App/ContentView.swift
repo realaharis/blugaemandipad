@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var mappedSummary: String?
     @State private var mappedImage: MappedMachOImage?
     @State private var importedData: Data?
+    @State private var fixupPlan: FixupPlan?
 
     var body: some View {
         NavigationStack {
@@ -28,6 +29,7 @@ struct ContentView: View {
                         row("Minimum macOS", image.minimumOS ?? "unknown")
                         row("SDK", image.sdk ?? "unknown")
                         row("Encrypted", image.encrypted ? "yes" : "no")
+                        row("Chained fixups", image.chainedFixups == nil ? "none" : "present")
                     }
 
                     Section("Stage-0 loader") {
@@ -39,10 +41,49 @@ struct ContentView: View {
                                 .font(.caption)
                                 .monospaced()
                         }
+                    }
 
-                        Text("Guest execution stays disabled until rebasing, symbol binding and executable mappings are implemented.")
+                    Section("Stage-1 dyld") {
+                        Button("Analyze chained fixups") { analyzeFixups(image) }
+                            .disabled(image.chainedFixups == nil)
+
+                        if let fixupPlan {
+                            row("Imports", "\(fixupPlan.info.imports.count)")
+                            row("Fixup pointers", "\(fixupPlan.supportedFixupCount)")
+                            row("Unresolved binds", "\(fixupPlan.unresolvedBindCount)")
+                            row("Apply-ready", fixupPlan.canApplyStage1 ? "yes" : "no")
+
+                            if !fixupPlan.info.unsupportedPointerFormats.isEmpty {
+                                let values = fixupPlan.info.unsupportedPointerFormats.sorted().map(String.init).joined(separator: ", ")
+                                Text("Unsupported pointer formats: \(values)")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+
+                            ForEach(fixupPlan.notes, id: \.self) {
+                                Text($0).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Text("This milestone parses and resolves chained fixups but does not execute guest code yet. ARM64e/PAC remains gated.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    }
+
+                    if let fixupPlan, !fixupPlan.resolutions.isEmpty {
+                        Section("Symbol broker") {
+                            ForEach(fixupPlan.resolutions) { symbol in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(symbol.name).font(.caption).monospaced()
+                                    Text(symbol.dependencyPath ?? "unknown library")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                    Text(symbol.address.map { String(format: "0x%llX", $0) } ?? "unresolved")
+                                        .font(.caption2)
+                                        .monospaced()
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -86,7 +127,9 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("DarwinBridge")
-            .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: false) { result in
+            .fileImporter(isPresented: $importing,
+                          allowedContentTypes: [.item],
+                          allowsMultipleSelection: false) { result in
                 do {
                     guard let url = try result.get().first else { return }
                     let scoped = url.startAccessingSecurityScopedResource()
@@ -103,12 +146,14 @@ struct ContentView: View {
                     errorText = nil
                     mappedSummary = nil
                     mappedImage = nil
+                    fixupPlan = nil
                 } catch {
                     errorText = error.localizedDescription
                     image = nil
                     report = nil
                     importedData = nil
                     mappedImage = nil
+                    fixupPlan = nil
                 }
             }
         }
@@ -132,6 +177,17 @@ struct ContentView: View {
             errorText = nil
         } catch {
             mappedImage = nil
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func analyzeFixups(_ image: MachOImageInfo) {
+        do {
+            guard let importedData else { return }
+            fixupPlan = try FixupPlanner.make(data: importedData, image: image)
+            errorText = nil
+        } catch {
+            fixupPlan = nil
             errorText = error.localizedDescription
         }
     }

@@ -1,33 +1,39 @@
 # DarwinBridge
 
-DarwinBridge is an experimental macOS-to-iPadOS compatibility layer prototype. The first milestone focuses on native ARM64 Mach-O inspection and manual mapping rather than CPU emulation.
+DarwinBridge is an experimental macOS-to-iPadOS compatibility layer prototype targeting native ARM64 Mach-O applications.
 
-## Milestone 0.1
+## Milestone 0.1 — passed on physical iPad
+
+- ARM64 Mach-O parsing
+- segment mapping for inspection
+- framework dependency classification
+- SwiftUI file importer
+- physical-device mapping test passed
+
+## Milestone 0.2 — chained dyld groundwork
 
 Implemented:
 
-- 64-bit little-endian Mach-O parser
-- ARM64 detection
-- LC_SEGMENT_64 parsing and file-range validation
-- LC_LOAD_DYLIB / weak / re-export dependency parsing
-- LC_RPATH, LC_MAIN, LC_BUILD_VERSION and LC_ENCRYPTION_INFO_64 parsing
-- framework compatibility classification
-- AppKit/UIKit shim planning
-- anonymous-memory segment mapper for inspection
-- SwiftUI iPhone/iPad host app with file import
-- unsigned IPA CI build
-- parser smoke test
+- LC_DYLD_CHAINED_FIXUPS discovery
+- dyld chained-fixups header validation
+- imports formats 1/2/3
+- starts-in-image / starts-in-segment parsing
+- DYLD_CHAINED_PTR_64 chain walking
+- DYLD_CHAINED_PTR_64_OFFSET chain walking
+- rebase/bind action planning
+- native host symbol probing through a SymbolBroker
+- explicit detection of unsupported ARM64e/PAC pointer formats
+- synthetic CI smoke tests
+- UI diagnostics for imports, fixups and unresolved bindings
 
-The loader intentionally does not jump to guest code yet. Rebasing, symbol binding, framework shims and JIT-safe executable mappings must be correct first.
+Not enabled yet:
 
-## Roadmap
+- writing rebased/bound pointers into mapped guest memory
+- ARM64e pointer authentication reconstruction
+- guest code execution
 
-1. LC_DYLD_CHAINED_FIXUPS parsing and rebasing.
-2. Export trie/import resolution and controlled symbol broker.
-3. AppKit compatibility surface backed by UIKit.
-4. Executable MAP_JIT pages under debugger/JIT-enabled conditions.
-5. Execute a tiny synthetic ARM64 macOS guest.
-6. Expand framework shims from traces.
-7. Test a larger macOS application/game launcher.
+Those remain gated intentionally until address-space translation and page protections are correct.
 
-League of Legends is a long-term compatibility target, not the first-stage test binary.
+## Next milestone
+
+Milestone 0.3 will create a contiguous guest virtual-address mapping, apply supported rebases/binds, finalize segment protections, and add an execution-capability probe before any guest entry point is called.

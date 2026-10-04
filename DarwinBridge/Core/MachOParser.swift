@@ -25,6 +25,7 @@ struct MachOParser {
     static let lcMain: UInt32 = 0x80000028
     static let lcBuildVersion: UInt32 = 0x32
     static let lcEncryptionInfo64: UInt32 = 0x2C
+    static let lcDyldChainedFixups: UInt32 = 0x80000034
 
     static func parse(_ data: Data) throws -> MachOImageInfo {
         guard data.count >= 32 else { throw MachOParserError.tooSmall }
@@ -50,6 +51,7 @@ struct MachOParser {
         var minimumOS: String?
         var sdk: String?
         var encrypted = false
+        var chainedFixups: LinkeditDataLocation?
 
         var offset = 32
         for _ in 0..<ncmds {
@@ -75,7 +77,9 @@ struct MachOParser {
             case lcLoadDylib, lcLoadWeakDylib, lcReexportDylib, lcLoadUpwardDylib:
                 guard cmdsize >= 24 else { throw MachOParserError.malformed("short dylib command") }
                 let nameOffset = Int(try u32(data, offset + 8))
-                guard nameOffset >= 8, nameOffset < cmdsize else { throw MachOParserError.malformed("invalid dylib name offset") }
+                guard nameOffset >= 8, nameOffset < cmdsize else {
+                    throw MachOParserError.malformed("invalid dylib name offset")
+                }
                 let path = cString(data, offset + nameOffset, offset + cmdsize)
                 dependencies.append(MachODependency(path: path,
                                                      weak: cmd == lcLoadWeakDylib,
@@ -97,6 +101,14 @@ struct MachOParser {
             case lcEncryptionInfo64:
                 guard cmdsize >= 24 else { throw MachOParserError.malformed("short LC_ENCRYPTION_INFO_64") }
                 encrypted = (try u32(data, offset + 16)) != 0
+            case lcDyldChainedFixups:
+                guard cmdsize >= 16 else { throw MachOParserError.malformed("short LC_DYLD_CHAINED_FIXUPS") }
+                let dataOffset = try u32(data, offset + 8)
+                let dataSize = try u32(data, offset + 12)
+                guard UInt64(dataOffset) + UInt64(dataSize) <= UInt64(data.count) else {
+                    throw MachOParserError.malformed("LC_DYLD_CHAINED_FIXUPS points outside file")
+                }
+                chainedFixups = LinkeditDataLocation(fileOffset: dataOffset, size: dataSize)
             default:
                 break
             }
@@ -122,7 +134,8 @@ struct MachOParser {
                               encrypted: encrypted,
                               segments: segments,
                               dependencies: dependencies,
-                              rpaths: rpaths)
+                              rpaths: rpaths,
+                              chainedFixups: chainedFixups)
     }
 
     private static func versionString(_ value: UInt32) -> String {
