@@ -23,6 +23,7 @@ struct LoLLiveContainerPackageResult {
 
 struct LoLLiveContainerPackager {
     private static let lcLoadDylib: UInt32 = 0x0C
+    private static let lcIdDylib: UInt32 = 0x0D
     private static let lcLoadWeakDylib: UInt32 = 0x80000018
     private static let lcReexportDylib: UInt32 = 0x8000001F
     private static let lcLoadUpwardDylib: UInt32 = 0x80000023
@@ -33,7 +34,7 @@ struct LoLLiveContainerPackager {
     static func buildMinimalIPA(executable source: Data,
                                 displayName: String = "League of Legends") throws -> LoLLiveContainerPackageResult {
         var executable = try MachOParser.preferredArm64Slice(source)
-        let patched = try patchForLiveContainer(&executable)
+        let redirects = try patchForLiveContainer(&executable)
 
         guard let pluginURL = Bundle.main.url(forResource: "DarwinBridgeLCPlugin", withExtension: "dylib") else {
             throw LoLLiveContainerPackageError.pluginMissing
@@ -46,26 +47,42 @@ struct LoLLiveContainerPackager {
         var zip = StoreZipWriter()
         try zip.add(path: "Payload/LeagueOfLegends.app/Info.plist", data: info)
         try zip.add(path: "Payload/LeagueOfLegends.app/\(executableName)", data: executable)
-        try zip.add(path: "Payload/LeagueOfLegends.app/Frameworks/DarwinBridgeLCPlugin.dylib", data: plugin)
+
+        // Keep each redirected dependency at a distinct dylib ordinal. dyld may
+        // coalesce duplicate load paths, which would shift the original Mach-O
+        // library ordinals and make BIND_OPCODE_DO_BIND fail. Each compatibility
+        // alias gets its own LC_ID_DYLIB and filename while exporting the same
+        // DarwinBridge compatibility symbols.
+        for redirect in redirects {
+            let aliasedPlugin = try pluginWithInstallName(plugin, redirect.installName)
+            try zip.add(path: "Payload/LeagueOfLegends.app/Frameworks/\(redirect.fileName)",
+                        data: aliasedPlugin)
+        }
 
         let out = FileManager.default.temporaryDirectory
             .appendingPathComponent("DarwinBridge-LoL-first-run.ipa")
         try zip.finalize().write(to: out, options: .atomic)
 
         return LoLLiveContainerPackageResult(ipaURL: out,
-                                             patchedDependencies: patched,
+                                             patchedDependencies: redirects.map(\.originalPath),
                                              executableBytes: executable.count,
                                              pluginBytes: plugin.count)
     }
 
-    private static func patchForLiveContainer(_ data: inout Data) throws -> [String] {
+    private struct DependencyRedirect {
+        let originalPath: String
+        let fileName: String
+        let installName: String
+    }
+
+    private static func patchForLiveContainer(_ data: inout Data) throws -> [DependencyRedirect] {
         guard data.count >= 32, try u32(data, 0) == MachOParser.mhMagic64 else {
             throw LoLLiveContainerPackageError.malformed("not a thin 64-bit Mach-O")
         }
 
         let ncmds = Int(try u32(data, 16))
         var cursor = 32
-        var patchedDependencies: [String] = []
+        var redirects: [DependencyRedirect] = []
 
         for _ in 0..<ncmds {
             guard cursor + 8 <= data.count else {
@@ -105,8 +122,8 @@ struct LoLLiveContainerPackager {
                 let end = cursor + cmdsize
                 let current = cString(data, start, end)
 
-                if shouldRedirect(current) {
-                    let replacement = "@loader_path/Frameworks/DarwinBridgeLCPlugin.dylib"
+                if let alias = compatibilityAlias(for: current) {
+                    let replacement = "@loader_path/Frameworks/\(alias)"
                     let capacity = end - start
                     guard replacement.utf8.count + 1 <= capacity else {
                         throw LoLLiveContainerPackageError.unsupportedDependency(current)
@@ -115,23 +132,78 @@ struct LoLLiveContainerPackager {
                     for (index, byte) in replacement.utf8.enumerated() {
                         data[start + index] = byte
                     }
-                    patchedDependencies.append(current)
+                    redirects.append(DependencyRedirect(
+                        originalPath: current,
+                        fileName: alias,
+                        installName: "@rpath/\(alias)"
+                    ))
                 }
             }
 
             cursor += cmdsize
         }
 
-        return patchedDependencies
+        return redirects
     }
 
-    private static func shouldRedirect(_ path: String) -> Bool {
+    private static func compatibilityAlias(for path: String) -> String? {
         let p = path.lowercased()
-        return p.contains("appkit.framework") ||
-               p.contains("coreservices.framework") ||
-               p.contains("cocoa.framework") ||
-               p.contains("scriptingbridge.framework") ||
-               p.contains("diskarbitration.framework")
+        if p.contains("appkit.framework") { return "DBAppKit.dylib" }
+        if p.contains("coreservices.framework") { return "DBCoreServices.dylib" }
+        if p.contains("cocoa.framework") { return "DBCocoa.dylib" }
+        if p.contains("scriptingbridge.framework") { return "DBScriptingBridge.dylib" }
+        if p.contains("diskarbitration.framework") { return "DBDiskArbitration.dylib" }
+        return nil
+    }
+
+    private static func pluginWithInstallName(_ source: Data,
+                                              _ installName: String) throws -> Data {
+        var data = source
+        guard data.count >= 32, try u32(data, 0) == MachOParser.mhMagic64 else {
+            throw LoLLiveContainerPackageError.malformed("compatibility plugin is not a thin 64-bit Mach-O")
+        }
+
+        let ncmds = Int(try u32(data, 16))
+        var cursor = 32
+        var patched = false
+
+        for _ in 0..<ncmds {
+            guard cursor + 8 <= data.count else {
+                throw LoLLiveContainerPackageError.malformed("truncated plugin load commands")
+            }
+            let cmd = try u32(data, cursor)
+            let cmdsize = Int(try u32(data, cursor + 4))
+            guard cmdsize >= 8, cursor + cmdsize <= data.count else {
+                throw LoLLiveContainerPackageError.malformed("invalid plugin load command")
+            }
+
+            if cmd == lcIdDylib {
+                guard cmdsize >= 24 else {
+                    throw LoLLiveContainerPackageError.malformed("short plugin LC_ID_DYLIB")
+                }
+                let nameOffset = Int(try u32(data, cursor + 8))
+                let start = cursor + nameOffset
+                let end = cursor + cmdsize
+                guard start >= cursor + 8, start < end else {
+                    throw LoLLiveContainerPackageError.malformed("invalid plugin install-name offset")
+                }
+                guard installName.utf8.count + 1 <= end - start else {
+                    throw LoLLiveContainerPackageError.unsupportedDependency(installName)
+                }
+                for i in start..<end { data[i] = 0 }
+                for (index, byte) in installName.utf8.enumerated() {
+                    data[start + index] = byte
+                }
+                patched = true
+                break
+            }
+            cursor += cmdsize
+        }
+
+        guard patched else {
+            throw LoLLiveContainerPackageError.malformed("compatibility plugin has no LC_ID_DYLIB")
+        }
+        return data
     }
 
     private static func makeInfoPlist(executableName: String, displayName: String) -> Data {
