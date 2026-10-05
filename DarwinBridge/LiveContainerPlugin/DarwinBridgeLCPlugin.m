@@ -41,6 +41,39 @@ DB_EMPTY_CLASS(NSWindow)
 DB_EMPTY_CLASS(SBApplication)
 DB_EMPTY_CLASS(NSAppleEventManager)
 
+@interface NSHTTPURLResponse : NSURLResponse
+- (instancetype)initWithURL:(NSURL *)URL
+                 statusCode:(NSInteger)statusCode
+                HTTPVersion:(NSString *)HTTPVersion
+               headerFields:(NSDictionary<NSString *, NSString *> *)headerFields;
++ (NSString *)localizedStringForStatusCode:(NSInteger)statusCode;
+- (NSInteger)statusCode;
+- (NSDictionary *)allHeaderFields;
+@end
+
+@implementation NSHTTPURLResponse {
+    NSInteger _dbStatusCode;
+    NSDictionary *_dbHeaderFields;
+}
+- (instancetype)initWithURL:(NSURL *)URL
+                 statusCode:(NSInteger)statusCode
+                HTTPVersion:(NSString *)HTTPVersion
+               headerFields:(NSDictionary<NSString *,NSString *> *)headerFields {
+    self = [super initWithURL:URL MIMEType:nil expectedContentLength:-1 textEncodingName:nil];
+    if (self) {
+        _dbStatusCode = statusCode;
+        _dbHeaderFields = [headerFields copy] ?: @{};
+        DBLog([NSString stringWithFormat:@"NSHTTPURLResponse status=%ld", (long)statusCode]);
+    }
+    return self;
+}
++ (NSString *)localizedStringForStatusCode:(NSInteger)statusCode {
+    return [NSHTTPURLResponse localizedStringForStatusCode:statusCode];
+}
+- (NSInteger)statusCode { return _dbStatusCode; }
+- (NSDictionary *)allHeaderFields { return _dbHeaderFields ?: @{}; }
+@end
+
 @interface NSApplication : DBCompatObject
 + (instancetype)sharedApplication;
 - (void)run;
