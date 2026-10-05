@@ -24,6 +24,7 @@ struct ContentView: View {
     @State private var realMachOPreflight: RealMachOPreflight?
     @State private var stage9Readiness: Stage9ReadinessReport?
     @State private var lolReadiness: LoLReadinessReport?
+    @State private var runtimeFoundation: RuntimeFoundationReport?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -379,6 +380,50 @@ struct ContentView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
+                    }
+
+                    Section("Stage-10 Runtime Foundation Sweep") {
+                        Button("Run full runtime foundation sweep") {
+                            runtimeFoundation = RuntimeFoundationAnalyzer.analyze(
+                                image: image,
+                                fixupPlan: fixupPlan
+                            )
+
+                            stage9Readiness = runtimeFoundation?.stage9
+                            lolReadiness = LoLReadinessAnalyzer.analyze(
+                                image: image,
+                                fixupPlan: fixupPlan,
+                                stage9: runtimeFoundation?.stage9
+                            )
+                        }
+
+                        if let runtime = runtimeFoundation {
+                            row("Foundation sweep", runtime.overallReady ? "READY" : "partial")
+                            row("Ready capabilities", "\(runtime.readyCount)/\(runtime.totalCount)")
+                            row("Bridge probes", "\(runtime.bridgeReport.readyCount)/\(runtime.bridgeReport.totalCount)")
+                            row("CLI foundation", runtime.stage9.readyForCLIBringUp ? "READY" : "blocked")
+
+                            ForEach(runtime.items) { item in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack {
+                                        Text(item.name)
+                                            .font(.caption)
+                                        Spacer()
+                                        Text(item.ready ? "PASS" : "MISSING")
+                                            .font(.caption)
+                                            .foregroundStyle(item.ready ? Color.secondary : Color.orange)
+                                    }
+                                    Text(item.detail)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+
+                        Text("This sweep batches Objective-C, CoreFoundation, pthread, filesystem, dispatch, bundle paths, Metal availability and process environment checks in one pass.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
 
                     if let fixupPlan, !fixupPlan.resolutions.isEmpty {
