@@ -16,7 +16,7 @@ struct FrameworkShimRegistry {
             p.contains("avfoundation.framework") || p.contains("coretext.framework") ||
             p.contains("cfnetwork.framework") || p.contains("security.framework") ||
             p.contains("systemconfiguration.framework") || p.hasSuffix("/libobjc.a.dylib") ||
-            p.contains("libresolv") || p.contains("libsm.") {
+            p.contains("libresolv") || p.contains("libsm.") || p.contains("libbsm.") {
             return DependencyAssessment(dependency: dependency,
                                         disposition: .native,
                                         replacement: nil,
