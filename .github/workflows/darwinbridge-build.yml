@@ -67,6 +67,12 @@ jobs:
         working-directory: DarwinBridge
         run: ./build.sh
 
+      - name: Verify embedded LiveContainer plugin
+        working-directory: DarwinBridge
+        run: |
+          test -f build/Payload/DarwinBridge.app/DarwinBridgeLCPlugin.dylib
+          unzip -l build/DarwinBridge-unsigned.ipa | grep -q "Payload/DarwinBridge.app/DarwinBridgeLCPlugin.dylib"
+
       - uses: actions/upload-artifact@v4
         with:
           name: DarwinBridge-LiveContainer-plugin
