@@ -26,6 +26,7 @@ struct ContentView: View {
     @State private var lolReadiness: LoLReadinessReport?
     @State private var runtimeFoundation: RuntimeFoundationReport?
     @State private var stage11To14: Stage11To14Report?
+    @State private var lolStage15: LoLStage15Report?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -464,6 +465,76 @@ struct ContentView: View {
                         }
 
                         Text("Stages 11–14 are intentionally batched: runtime integration, Cocoa/AppKit host prerequisites, Metal foundation, and macOS app-bundle bring-up prerequisites are evaluated together.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-15 LoL Client Bring-up") {
+                        Button("Scan imported client for LoL bring-up") {
+                            if let importedData {
+                                lolStage15 = LoLStage15Analyzer.analyze(
+                                    data: importedData,
+                                    image: image,
+                                    fixupPlan: fixupPlan
+                                )
+                            }
+                        }
+
+                        if let scan = lolStage15 {
+                            row("Client candidate", scan.candidate ? "YES" : "blocked")
+                            row("Architecture", scan.architecture)
+                            row("File bytes", "\(scan.fileSize)")
+                            row("Segments", "\(scan.segmentCount)")
+                            row("Dependencies", "\(scan.dependencyCount)")
+                            row("RPATHs", "\(scan.rpathCount)")
+                            row("Imported symbols", scan.importedSymbolCount.map(String.init) ?? "not analyzed")
+                            row("Unresolved imports", scan.unresolvedImports.map(String.init) ?? "not analyzed")
+                            row("Static blockers", "\(scan.blockers.count)")
+
+                            ForEach(scan.buckets) { bucket in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("\(bucket.name): \(bucket.count)")
+                                        .font(.caption)
+                                        .bold()
+                                    ForEach(bucket.paths.prefix(12), id: \.self) {
+                                        Text($0)
+                                            .font(.caption2)
+                                            .monospaced()
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    if bucket.paths.count > 12 {
+                                        Text("+ \(bucket.paths.count - 12) more")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+
+                            if !scan.blockers.isEmpty {
+                                Text("Blockers").font(.caption).bold()
+                                ForEach(scan.blockers, id: \.self) {
+                                    Text("• \($0)").font(.caption)
+                                }
+                            }
+
+                            if !scan.warnings.isEmpty {
+                                Text("Warnings").font(.caption).bold()
+                                ForEach(scan.warnings, id: \.self) {
+                                    Text("• \($0)")
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+
+                            Text("Next compatibility work").font(.caption).bold()
+                            ForEach(scan.nextActions, id: \.self) {
+                                Text("• \($0)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Text("Import the actual ARM64 League of Legends macOS executable here. Stage 15 performs one large dependency/RPATH/import compatibility scan so subsequent work is driven by the real client rather than synthetic probes.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
