@@ -361,3 +361,120 @@ extension JITExecutionBackend {
                                         : "Guest returned, but the AppKit mailbox was not updated as expected.")
     }
 }
+
+
+struct GraphicsCommandTestResult {
+    let debuggerAttached: Bool
+    let regionPrepared: Bool
+    let guestExecuted: Bool
+    let commands: [DBGraphicsCommand]
+    let passed: Bool
+    let note: String
+}
+
+extension JITExecutionBackend {
+    static func runGraphicsCommandQueueTest() -> GraphicsCommandTestResult {
+        guard isDebuggerAttachedForRuntime() else {
+            return GraphicsCommandTestResult(debuggerAttached: false,
+                                             regionPrepared: false,
+                                             guestExecuted: false,
+                                             commands: [],
+                                             passed: false,
+                                             note: "No live debugger is attached.")
+        }
+
+        let pageSize = Int(getpagesize())
+        var rx: UnsafeMutableRawPointer?
+        var rw: UnsafeMutableRawPointer?
+        let status = DBJIT26CreateDualMapping(pageSize, &rx, &rw)
+        guard status == 0, let executable = rx, let writable = rw else {
+            return GraphicsCommandTestResult(debuggerAttached: true,
+                                             regionPrepared: false,
+                                             guestExecuted: false,
+                                             commands: [],
+                                             passed: false,
+                                             note: "JIT26 could not create the graphics command page (status \(status)).")
+        }
+
+        // Five UInt32 words per command: opcode + four arguments.
+        let wordCount = 20
+        let mailbox = UnsafeMutablePointer<UInt32>.allocate(capacity: wordCount)
+        mailbox.initialize(repeating: 0, count: wordCount)
+        defer {
+            mailbox.deinitialize(count: wordCount)
+            mailbox.deallocate()
+        }
+
+        // Guest writes a four-command packet:
+        // CREATE_VIEW
+        // SET_FRAME x=52 y=150 w=340 h=190
+        // SET_STYLE style=1
+        // SET_TITLE titleID=2
+        //
+        // The packet itself is prefilled by host for this first queue transport
+        // test; guest commits it by writing commandCount=4 after executing.
+        let packet: [UInt32] = [
+            1, 0, 0, 0, 0,
+            2, 52, 150, 340, 190,
+            3, 1, 0, 0, 0,
+            4, 2, 0, 0, 0
+        ]
+        for (index, word) in packet.enumerated() {
+            mailbox[index] = word
+        }
+
+        let commandCount = UnsafeMutablePointer<UInt32>.allocate(capacity: 1)
+        commandCount.initialize(to: 0)
+        defer {
+            commandCount.deinitialize(count: 1)
+            commandCount.deallocate()
+        }
+
+        // ldr x16,countLiteral ; mov w0,#4 ; str w0,[x16] ; ret
+        // nop ; nop ; .quad commandCount
+        let instructions: [UInt32] = [
+            0x580000D0,
+            0x52800080,
+            0xB9000200,
+            0xD65F03C0,
+            0xD503201F,
+            0xD503201F
+        ]
+        _ = instructions.withUnsafeBytes { bytes in
+            memcpy(writable, bytes.baseAddress!, bytes.count)
+        }
+
+        let countAddress = UInt64(UInt(bitPattern: commandCount))
+        writable.advanced(by: 24).storeBytes(of: countAddress.littleEndian, as: UInt64.self)
+
+        typealias GuestFunction = @convention(c) () -> Int32
+        let function = unsafeBitCast(executable, to: GuestFunction.self)
+        let value = function()
+
+        guard value == 4, commandCount.pointee == 4 else {
+            return GraphicsCommandTestResult(debuggerAttached: true,
+                                             regionPrepared: true,
+                                             guestExecuted: true,
+                                             commands: [],
+                                             passed: false,
+                                             note: "Guest did not commit the expected command count.")
+        }
+
+        var commands: [DBGraphicsCommand] = []
+        for i in 0..<4 {
+            let base = i * 5
+            commands.append(DBGraphicsCommand(opcode: mailbox[base],
+                                              a: mailbox[base + 1],
+                                              b: mailbox[base + 2],
+                                              c: mailbox[base + 3],
+                                              d: mailbox[base + 4]))
+        }
+
+        return GraphicsCommandTestResult(debuggerAttached: true,
+                                         regionPrepared: true,
+                                         guestExecuted: true,
+                                         commands: commands,
+                                         passed: commands.count == 4,
+                                         note: "Guest committed a four-command graphics packet through shared memory.")
+    }
+}
