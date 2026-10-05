@@ -21,6 +21,7 @@ struct ContentView: View {
     @State private var graphicsResult: GraphicsCommandTestResult?
     @State private var inputSequence: UInt64 = 0
     @State private var inputSummary = "none"
+    @State private var realMachOPreflight: RealMachOPreflight?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -269,6 +270,35 @@ struct ContentView: View {
                         }
 
                         Text("Guest commands cross the boundary through shared memory. UIKit rendering and input capture occur only after guest execution returns.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-7 Real Mach-O Bring-up") {
+                        Button("Preflight real entry point") {
+                            realMachOPreflight = RealMachOLaunchPipeline.preflight(
+                                image: image,
+                                guestSpace: guestSpace,
+                                fixupPlan: fixupPlan,
+                                appliedFixups: appliedFixups
+                            )
+                        }
+
+                        if let preflight = realMachOPreflight {
+                            row("Preflight", preflight.ready ? "READY" : "blocked")
+                            row("Unresolved imports", "\(preflight.unresolvedImports)")
+                            row("Executable segment", preflight.executableSegment ?? "—")
+                            row("Guest entry", preflight.entryGuestAddress.map { String(format: "0x%llX", $0) } ?? "—")
+                            row("Mapped entry", preflight.entryHostAddress.map { String(format: "0x%llX", $0) } ?? "—")
+
+                            ForEach(preflight.notes, id: \.self) { note in
+                                Text(note)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Text("Stage-7 validates a real imported Mach-O through parse → fixups → symbol resolution → LC_MAIN entry-point discovery. Direct control transfer remains disabled until __TEXT is remapped through JIT26 executable memory.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
