@@ -5,6 +5,7 @@ import Darwin
 struct ParserSmoke {
     static func main() throws {
         try basicMachOSmoke()
+        try universalArm64SliceSmoke()
         try chainedFixupsSmoke()
         try guestBindSmoke()
         try guestRebaseSmoke()
@@ -48,6 +49,61 @@ struct ParserSmoke {
         precondition(image.segments.count == 1)
         precondition(image.entryOffset == 0x40)
         precondition(image.chainedFixups == nil)
+    }
+
+    static func universalArm64SliceSmoke() throws {
+        let thinSize = 32 + 72 + 24
+        var thin = Data(repeating: 0, count: thinSize)
+
+        func thin32(_ offset: Int, _ value: UInt32) {
+            for i in 0..<4 { thin[offset + i] = UInt8((value >> UInt32(i * 8)) & 0xff) }
+        }
+        func thin64(_ offset: Int, _ value: UInt64) {
+            for i in 0..<8 { thin[offset + i] = UInt8((value >> UInt64(i * 8)) & 0xff) }
+        }
+
+        thin32(0, 0xFEEDFACF)
+        thin32(4, 0x0100000C)
+        thin32(12, 2)
+        thin32(16, 2)
+        thin32(20, 96)
+        let seg = 32
+        thin32(seg, 0x19)
+        thin32(seg + 4, 72)
+        for (i, b) in Array("__TEXT".utf8).enumerated() { thin[seg + 8 + i] = b }
+        thin64(seg + 24, 0x100000000)
+        thin64(seg + 32, 0x1000)
+        thin64(seg + 40, 0)
+        thin64(seg + 48, UInt64(thin.count))
+        thin32(seg + 56, 7)
+        thin32(seg + 60, 5)
+        let main = seg + 72
+        thin32(main, 0x80000028)
+        thin32(main + 4, 24)
+        thin64(main + 8, 0x40)
+
+        let sliceOffset = 0x100
+        var fat = Data(repeating: 0, count: sliceOffset + thin.count)
+        func be32(_ offset: Int, _ value: UInt32) {
+            fat[offset] = UInt8((value >> 24) & 0xff)
+            fat[offset + 1] = UInt8((value >> 16) & 0xff)
+            fat[offset + 2] = UInt8((value >> 8) & 0xff)
+            fat[offset + 3] = UInt8(value & 0xff)
+        }
+        be32(0, 0xCAFEBABE)
+        be32(4, 1)
+        be32(8, 0x0100000C)
+        be32(12, 0)
+        be32(16, UInt32(sliceOffset))
+        be32(20, UInt32(thin.count))
+        be32(24, 2)
+        fat.replaceSubrange(sliceOffset..<(sliceOffset + thin.count), with: thin)
+
+        let selected = try MachOParser.preferredArm64Slice(fat)
+        precondition(selected == thin)
+        let image = try MachOParser.parse(fat)
+        precondition(image.isArm64)
+        precondition(image.entryOffset == 0x40)
     }
 
     static func chainedFixupsSmoke() throws {
