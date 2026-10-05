@@ -1,10 +1,3 @@
-# DarwinBridge 0.8 real-Mach-O preflight build
-# DarwinBridge 0.7 graphics-input build
-# DarwinBridge 0.6 AppKit bridge build
-# DarwinBridge 0.5.1 runtime-chain build
-# DarwinBridge 0.5 fixed runtime build
-# DarwinBridge 0.5 runtime build
-# DarwinBridge JIT26 build
 name: DarwinBridge iOS prototype
 
 on:
@@ -37,6 +30,26 @@ jobs:
             -o /tmp/darwinbridge-smoke
           /tmp/darwinbridge-smoke
 
+      - name: Build controlled macOS ARM64 Mach-O
+        working-directory: DarwinBridge
+        run: |
+          mkdir -p build/test-target
+          SDK="$(xcrun --sdk macosx --show-sdk-path)"
+          CLANG="$(xcrun --sdk macosx --find clang)"
+          "$CLANG" \
+            -target arm64-apple-macos13.0 \
+            -isysroot "$SDK" \
+            -Wl,-no_pie \
+            Tests/real_macho_return42.c \
+            -o build/test-target/darwinbridge-test-arm64
+
+          file build/test-target/darwinbridge-test-arm64
+          lipo -info build/test-target/darwinbridge-test-arm64
+          otool -l build/test-target/darwinbridge-test-arm64 > build/test-target/load-commands.txt
+
+          grep -A 4 "segname __TEXT" build/test-target/load-commands.txt
+          grep -A 4 "LC_MAIN" build/test-target/load-commands.txt
+
       - name: Build unsigned IPA
         working-directory: DarwinBridge
         run: ./build.sh
@@ -45,3 +58,10 @@ jobs:
         with:
           name: DarwinBridge-unsigned-ipa
           path: DarwinBridge/build/DarwinBridge-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DarwinBridge-real-macho-test
+          path: |
+            DarwinBridge/build/test-target/darwinbridge-test-arm64
+            DarwinBridge/build/test-target/load-commands.txt
