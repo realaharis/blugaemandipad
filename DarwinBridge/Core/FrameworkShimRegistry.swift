@@ -52,12 +52,6 @@ struct FrameworkShimRegistry {
                                         replacement: "DarwinBridge no-op/limited scripting shim",
                                         note: "Apple-event automation is unavailable; provide a limited compatibility surface.")
         }
-        if p.contains("iokit.framework") {
-            return DependencyAssessment(dependency: dependency,
-                                        disposition: .partial,
-                                        replacement: "IOKit shim / higher-level iOS APIs",
-                                        note: "Many desktop IOKit services are unavailable inside the iOS sandbox.")
-        }
         if p.contains("carbon.framework") || p.contains("opengl.framework") {
             return DependencyAssessment(dependency: dependency,
                                         disposition: .blocked,
