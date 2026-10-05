@@ -96,6 +96,14 @@ DB_EMPTY_CLASS(NSAppleEventManager)
 }
 @end
 
+
+// Mach-O clients bind Objective-C classes by the exported symbol
+// _OBJC_CLASS_$_ClassName. Runtime registration alone is too late for dyld's
+// non-flat ordinal bind, so export an actual data symbol from the compatibility
+// dylib. The value is populated by the plugin constructor.
+__attribute__((visibility("default"), used))
+Class DBExportedNSHTTPURLResponse __asm__("_OBJC_CLASS_$_NSHTTPURLResponse") = Nil;
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
@@ -140,6 +148,13 @@ static void DBDarwinBridgePluginInit(void) {
             DBLog(@"registered NSHTTPURLResponse compatibility class");
         }
     }
+    Class httpResponseClass = objc_getClass("NSHTTPURLResponse");
+    if (httpResponseClass == Nil) {
+        httpResponseClass = DBNSHTTPURLResponseShim.class;
+    }
+    DBExportedNSHTTPURLResponse = httpResponseClass;
+    DBLog([NSString stringWithFormat:@"exported NSHTTPURLResponse class symbol -> %@", NSStringFromClass(httpResponseClass)]);
+
     NSApp = [NSApplication sharedApplication];
     DBLog(@"compatibility plugin loaded");
     DBLog([NSString stringWithFormat:@"UIKit=%@ MetalClassProbe=%@",
