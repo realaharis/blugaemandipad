@@ -84,8 +84,6 @@ struct RealMachOLaunchPipeline {
             notes.append("Fixups have not been applied to guest memory.")
         }
 
-        // Do not jump directly into the RW guest mapping yet. iPadOS 27/TXM
-        // requires executable pages to be provisioned through the JIT26 path.
         notes.append("Entry point located. Next step is copying executable __TEXT into a debugger-provisioned RX/RW dual mapping before transfer of control.")
 
         return RealMachOPreflight(ready: unresolved == 0 && appliedFixups != nil,
