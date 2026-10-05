@@ -620,7 +620,8 @@ struct ContentView: View {
                         if scoped { url.stopAccessingSecurityScopedResource() }
                     }
 
-                    let data = try Data(contentsOf: url, options: .mappedIfSafe)
+                    let sourceData = try Data(contentsOf: url, options: .mappedIfSafe)
+                    let data = try MachOParser.preferredArm64Slice(sourceData)
                     let parsed = try MachOParser.parse(data)
 
                     fileName = url.lastPathComponent
