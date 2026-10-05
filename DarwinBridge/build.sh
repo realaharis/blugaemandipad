@@ -5,6 +5,14 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 BUILD="$ROOT/build"
 APP="$BUILD/Payload/DarwinBridge.app"
 OBJ="$BUILD/obj"
+PLUGIN_SRC="$BUILD/livecontainer-plugin/DarwinBridgeLCPlugin.dylib"
+PLUGIN_STAGING="$(mktemp -d)"
+trap 'rm -rf "$PLUGIN_STAGING"' EXIT
+
+# Preserve the plugin because build.sh recreates the main build directory.
+if [ -f "$PLUGIN_SRC" ]; then
+  cp "$PLUGIN_SRC" "$PLUGIN_STAGING/DarwinBridgeLCPlugin.dylib"
+fi
 
 rm -rf "$BUILD"
 mkdir -p "$APP" "$OBJ"
@@ -24,9 +32,12 @@ CLANG="$(xcrun --sdk iphoneos --find clang)"
 cp "$ROOT/Info.plist" "$APP/Info.plist"
 cp "$ROOT/JIT/darwinbridge-universal.js" "$APP/darwinbridge-universal.js"
 
-PLUGIN="$BUILD/livecontainer-plugin/DarwinBridgeLCPlugin.dylib"
+PLUGIN="$PLUGIN_STAGING/DarwinBridgeLCPlugin.dylib"
 if [ -f "$PLUGIN" ]; then
   cp "$PLUGIN" "$APP/DarwinBridgeLCPlugin.dylib"
+else
+  echo "error: DarwinBridgeLCPlugin.dylib was not built before build.sh" >&2
+  exit 1
 fi
 
 if command -v codesign >/dev/null 2>&1; then
