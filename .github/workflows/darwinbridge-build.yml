@@ -59,13 +59,13 @@ jobs:
           grep -q "Metal device runtime" Core/Stage11To14Analyzer.swift
           grep -q "Bundle root" Core/Stage11To14Analyzer.swift
 
-      - name: Build unsigned IPA
-        working-directory: DarwinBridge
-        run: ./build.sh
-
       - name: Build LiveContainer compatibility plugin
         working-directory: DarwinBridge
         run: chmod +x LiveContainerPlugin/build-plugin.sh && LiveContainerPlugin/build-plugin.sh
+
+      - name: Build unsigned IPA
+        working-directory: DarwinBridge
+        run: ./build.sh
 
       - uses: actions/upload-artifact@v4
         with:
