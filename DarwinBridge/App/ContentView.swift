@@ -25,6 +25,7 @@ struct ContentView: View {
     @State private var stage9Readiness: Stage9ReadinessReport?
     @State private var lolReadiness: LoLReadinessReport?
     @State private var runtimeFoundation: RuntimeFoundationReport?
+    @State private var stage11To14: Stage11To14Report?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -422,6 +423,47 @@ struct ContentView: View {
                         }
 
                         Text("This sweep batches Objective-C, CoreFoundation, pthread, filesystem, dispatch, bundle paths, Metal availability and process environment checks in one pass.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage 11 → 14 Integration") {
+                        Button("Run Stage 11–14 integration sweep") {
+                            stage11To14 = Stage11To14Analyzer.analyze(
+                                image: image,
+                                fixupPlan: fixupPlan
+                            )
+                        }
+
+                        if let sweep = stage11To14 {
+                            row("Stage 11 Runtime integration", sweep.stage11Ready ? "READY" : "partial")
+                            row("Stage 12 Cocoa/AppKit host", sweep.stage12Ready ? "READY" : "partial")
+                            row("Stage 13 Metal foundation", sweep.stage13Ready ? "READY" : "partial")
+                            row("Stage 14 App bundle bring-up", sweep.stage14Ready ? "READY" : "partial")
+                            row("Combined capabilities", "\(sweep.readyCount)/\(sweep.items.count)")
+
+                            ForEach(11...14, id: \.self) { stage in
+                                Text("Stage \(stage)")
+                                    .font(.caption)
+                                    .bold()
+                                ForEach(sweep.items.filter { $0.stage == stage }) { item in
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        HStack {
+                                            Text(item.name).font(.caption)
+                                            Spacer()
+                                            Text(item.ready ? "PASS" : "MISSING")
+                                                .font(.caption)
+                                                .foregroundStyle(item.ready ? Color.secondary : Color.orange)
+                                        }
+                                        Text(item.detail)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+
+                        Text("Stages 11–14 are intentionally batched: runtime integration, Cocoa/AppKit host prerequisites, Metal foundation, and macOS app-bundle bring-up prerequisites are evaluated together.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
