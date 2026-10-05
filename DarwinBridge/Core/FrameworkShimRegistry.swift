@@ -13,7 +13,10 @@ struct FrameworkShimRegistry {
         if p.contains("foundation.framework") || p.contains("corefoundation.framework") ||
             p.contains("coregraphics.framework") || p.contains("quartzcore.framework") ||
             p.contains("metal.framework") || p.contains("metalkit.framework") ||
-            p.contains("avfoundation.framework") || p.hasSuffix("/libobjc.a.dylib") {
+            p.contains("avfoundation.framework") || p.contains("coretext.framework") ||
+            p.contains("cfnetwork.framework") || p.contains("security.framework") ||
+            p.contains("systemconfiguration.framework") || p.hasSuffix("/libobjc.a.dylib") ||
+            p.contains("libresolv") || p.contains("libsm.") {
             return DependencyAssessment(dependency: dependency,
                                         disposition: .native,
                                         replacement: nil,
@@ -25,13 +28,37 @@ struct FrameworkShimRegistry {
                                         replacement: "IOKit shim / higher-level iOS APIs",
                                         note: "Many desktop IOKit services are unavailable inside the iOS sandbox.")
         }
-        if p.contains("security.framework") || p.contains("network.framework") {
+        if p.contains("coreservices.framework") {
+            return DependencyAssessment(dependency: dependency,
+                                        disposition: .shim,
+                                        replacement: "Foundation/UTType/FileManager compatibility shim",
+                                        note: "CoreServices umbrella is desktop-only, but common client-facing services can be mapped to iOS equivalents.")
+        }
+        if p.contains("cocoa.framework") {
+            return DependencyAssessment(dependency: dependency,
+                                        disposition: .shim,
+                                        replacement: "Foundation + DarwinBridge.AppKitShim",
+                                        note: "Cocoa umbrella maps to Foundation plus the existing AppKit/UIKit facade.")
+        }
+        if p.contains("diskarbitration.framework") {
+            return DependencyAssessment(dependency: dependency,
+                                        disposition: .shim,
+                                        replacement: "Sandbox volume compatibility shim",
+                                        note: "Expose app-visible volume/path semantics without desktop disk arbitration.")
+        }
+        if p.contains("scriptingbridge.framework") {
+            return DependencyAssessment(dependency: dependency,
+                                        disposition: .shim,
+                                        replacement: "DarwinBridge no-op/limited scripting shim",
+                                        note: "Apple-event automation is unavailable; provide a limited compatibility surface.")
+        }
+        if p.contains("iokit.framework") {
             return DependencyAssessment(dependency: dependency,
                                         disposition: .partial,
-                                        replacement: nil,
-                                        note: "Framework exists on iOS, but desktop-only calls and entitlements may differ.")
+                                        replacement: "IOKit shim / higher-level iOS APIs",
+                                        note: "Many desktop IOKit services are unavailable inside the iOS sandbox.")
         }
-        if p.contains("coreservices.framework") || p.contains("carbon.framework") || p.contains("opengl.framework") {
+        if p.contains("carbon.framework") || p.contains("opengl.framework") {
             return DependencyAssessment(dependency: dependency,
                                         disposition: .blocked,
                                         replacement: p.contains("opengl") ? "Metal translation layer" : nil,
