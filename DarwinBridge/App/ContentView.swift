@@ -32,6 +32,7 @@ struct ContentView: View {
     @State private var lolCompatibilityPlan: LoLCompatibilityPlan?
     @State private var lolShimCoverage: LoLShimCoverageReport?
     @State private var lolRuntimeValidation: LoLRuntimeShimValidation?
+    @State private var lolStage17Preflight: LoLStage17Preflight?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -783,6 +784,42 @@ struct ContentView: View {
                         }
 
                         Text("Stage 16C validates actual runtime symbol providers for the LoL-specific AppKit, ScriptingBridge, CoreServices and dyld compatibility surface. Self/weak C++ imports remain assigned to intra-image resolution.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-17 LoL Bring-up") {
+                        Button("Run LoL bring-up preflight") {
+                            if let importedData {
+                                lolStage17Preflight = LoLStage17PreflightAnalyzer.analyze(
+                                    data: importedData,
+                                    image: image,
+                                    deepScan: deepSymbols,
+                                    runtimeValidation: lolRuntimeValidation
+                                )
+                            }
+                        }
+
+                        if let stage17 = lolStage17Preflight {
+                            row("Bring-up preflight", stage17.ready ? "READY" : "blocked")
+                            row("First blocker", stage17.firstBlocker ?? "none")
+                            ForEach(stage17.checkpoints) { point in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack {
+                                        Text(point.name).font(.caption)
+                                        Spacer()
+                                        Text(point.passed ? "PASS" : "BLOCKED")
+                                            .font(.caption)
+                                            .foregroundStyle(point.passed ? Color.secondary : Color.orange)
+                                    }
+                                    Text(point.detail)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+
+                        Text("Stage 17 is the final preflight before real League client bring-up. It combines the actual ARM64 client, deep dyld metadata, resolved host imports and implemented LoL runtime shims into one launch-readiness checkpoint.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
