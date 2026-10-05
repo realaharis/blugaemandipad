@@ -23,6 +23,7 @@ struct ContentView: View {
     @State private var inputSummary = "none"
     @State private var realMachOPreflight: RealMachOPreflight?
     @State private var stage9Readiness: Stage9ReadinessReport?
+    @State private var lolReadiness: LoLReadinessReport?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -338,6 +339,46 @@ struct ContentView: View {
                         Text("Stage-9 profiles the dependency and symbol surface for the first lightweight real macOS program. It does not transfer control to imported executable code.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    }
+
+                    Section("LoL Target Readiness") {
+                        Button("Analyze path to League of Legends") {
+                            lolReadiness = LoLReadinessAnalyzer.analyze(
+                                image: image,
+                                fixupPlan: fixupPlan,
+                                stage9: stage9Readiness
+                            )
+                        }
+
+                        if let lol = lolReadiness {
+                            row("Foundation tier", lol.tier)
+                            row("Current blockers", "\(lol.blockers.count)")
+                            row("Bridge work items", "\(lol.requiredBridges.count)")
+
+                            if !lol.blockers.isEmpty {
+                                Text("Blockers")
+                                    .font(.caption)
+                                    .bold()
+                                ForEach(lol.blockers, id: \.self) {
+                                    Text("• \($0)").font(.caption)
+                                }
+                            }
+
+                            Text("Required compatibility layers")
+                                .font(.caption)
+                                .bold()
+                            ForEach(lol.requiredBridges, id: \.self) {
+                                Text("• \($0)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            ForEach(lol.notes, id: \.self) {
+                                Text($0)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
 
                     if let fixupPlan, !fixupPlan.resolutions.isEmpty {
