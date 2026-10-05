@@ -41,7 +41,7 @@ DB_EMPTY_CLASS(NSWindow)
 DB_EMPTY_CLASS(SBApplication)
 DB_EMPTY_CLASS(NSAppleEventManager)
 
-@interface NSHTTPURLResponse : NSURLResponse
+@interface DBNSHTTPURLResponseShim : NSURLResponse
 - (instancetype)initWithURL:(NSURL *)URL
                  statusCode:(NSInteger)statusCode
                 HTTPVersion:(NSString *)HTTPVersion
@@ -51,7 +51,7 @@ DB_EMPTY_CLASS(NSAppleEventManager)
 - (NSDictionary *)allHeaderFields;
 @end
 
-@implementation NSHTTPURLResponse {
+@implementation DBNSHTTPURLResponseShim {
     NSInteger _dbStatusCode;
     NSDictionary *_dbHeaderFields;
 }
@@ -63,12 +63,12 @@ DB_EMPTY_CLASS(NSAppleEventManager)
     if (self) {
         _dbStatusCode = statusCode;
         _dbHeaderFields = [headerFields copy] ?: @{};
-        DBLog([NSString stringWithFormat:@"NSHTTPURLResponse status=%ld", (long)statusCode]);
+        DBLog([NSString stringWithFormat:@"NSHTTPURLResponse shim status=%ld", (long)statusCode]);
     }
     return self;
 }
 + (NSString *)localizedStringForStatusCode:(NSInteger)statusCode {
-    return [NSHTTPURLResponse localizedStringForStatusCode:statusCode];
+    return [NSString stringWithFormat:@"HTTP %ld", (long)statusCode];
 }
 - (NSInteger)statusCode { return _dbStatusCode; }
 - (NSDictionary *)allHeaderFields { return _dbHeaderFields ?: @{}; }
@@ -120,6 +120,26 @@ const char *DBDarwinBridgePluginVersion(void) {
 
 __attribute__((constructor))
 static void DBDarwinBridgePluginInit(void) {
+    // Some macOS-linked clients bind NSHTTPURLResponse from CFNetwork while
+    // iOS exposes the class through Foundation. Register a compatibility class
+    // under the expected Objective-C runtime name only when it is absent.
+    if (objc_getClass("NSHTTPURLResponse") == Nil) {
+        Class source = DBNSHTTPURLResponseShim.class;
+        Class dynamic = objc_allocateClassPair(class_getSuperclass(source), "NSHTTPURLResponse", 0);
+        if (dynamic) {
+            unsigned int methodCount = 0;
+            Method *methods = class_copyMethodList(source, &methodCount);
+            for (unsigned int i = 0; i < methodCount; i++) {
+                class_addMethod(dynamic,
+                                method_getName(methods[i]),
+                                method_getImplementation(methods[i]),
+                                method_getTypeEncoding(methods[i]));
+            }
+            free(methods);
+            objc_registerClassPair(dynamic);
+            DBLog(@"registered NSHTTPURLResponse compatibility class");
+        }
+    }
     NSApp = [NSApplication sharedApplication];
     DBLog(@"compatibility plugin loaded");
     DBLog([NSString stringWithFormat:@"UIKit=%@ MetalClassProbe=%@",
