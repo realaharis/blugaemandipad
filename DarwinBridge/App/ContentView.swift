@@ -35,6 +35,7 @@ struct ContentView: View {
     @State private var lolStage17Preflight: LoLStage17Preflight?
     @State private var lolLaunchDryRun: LoLLaunchDryRunReport?
     @State private var lolRuntimeDiagnostics: LoLRuntimeDiagnosticReport?
+    @State private var liveContainerBackend: LiveContainerBackendReport?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -904,6 +905,46 @@ struct ContentView: View {
                         }
 
                         Text("Stage 17D records the complete measured state immediately before the external execution handoff: client layout, LC_MAIN, import resolution, LoL shims, Objective-C, Metal and resource availability.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-18 LiveContainer Backend") {
+                        Button("Validate LiveContainer execution backend") {
+                            liveContainerBackend = LiveContainerExecutionBackend.inspect(
+                                image: image,
+                                deepScan: deepSymbols,
+                                runtimeValidation: lolRuntimeValidation,
+                                launchDryRun: lolLaunchDryRun
+                            )
+                        }
+
+                        if let backend = liveContainerBackend {
+                            row("Backend integration", backend.compatible ? "READY" : "blocked")
+                            row("dlopen host API", backend.hostDlopenAvailable ? "PASS" : "missing")
+                            row("dyld image APIs", backend.dyldImageAPIAvailable ? "PASS" : "missing")
+                            row("JIT/debug session", backend.debuggerAttached ? "PASS" : "missing")
+                            row("LoL client", backend.clientReady ? "PASS" : "blocked")
+                            row("514-import surface", backend.importsReady ? "PASS" : "blocked")
+                            row("LoL shim surface", backend.shimReady ? "PASS" : "blocked")
+
+                            if !backend.requirements.isEmpty {
+                                Text("Backend requirements").font(.caption).bold()
+                                ForEach(backend.requirements, id: \.self) {
+                                    Text("• \($0)")
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+
+                            ForEach(backend.notes, id: \.self) {
+                                Text($0)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Text("Stage 18 validates the adapter contract for using LiveContainer as DarwinBridge's native execution backend while retaining DarwinBridge's LoL-specific compatibility analysis and shim layer.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
