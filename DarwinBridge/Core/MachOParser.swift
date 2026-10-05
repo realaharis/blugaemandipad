@@ -16,6 +16,9 @@ enum MachOParserError: Error, LocalizedError {
 
 struct MachOParser {
     static let mhMagic64: UInt32 = 0xFEEDFACF
+    static let fatMagicBE: UInt32 = 0xCAFEBABE
+    static let fatMagic64BE: UInt32 = 0xCAFEBABF
+    static let cpuTypeArm64: UInt32 = 0x0100000C
     static let lcSegment64: UInt32 = 0x19
     static let lcLoadDylib: UInt32 = 0x0C
     static let lcLoadWeakDylib: UInt32 = 0x80000018
@@ -27,7 +30,57 @@ struct MachOParser {
     static let lcEncryptionInfo64: UInt32 = 0x2C
     static let lcDyldChainedFixups: UInt32 = 0x80000034
 
+    static func preferredArm64Slice(_ data: Data) throws -> Data {
+        guard data.count >= 4 else { throw MachOParserError.tooSmall }
+
+        let firstBE = try be32(data, 0)
+        guard firstBE == fatMagicBE || firstBE == fatMagic64BE else {
+            return data
+        }
+
+        guard data.count >= 8 else {
+            throw MachOParserError.malformed("truncated universal Mach-O header")
+        }
+
+        let count = Int(try be32(data, 4))
+        let is64 = firstBE == fatMagic64BE
+        let recordSize = is64 ? 32 : 20
+        let tableEnd = 8 + count * recordSize
+        guard count > 0, tableEnd <= data.count else {
+            throw MachOParserError.malformed("invalid universal Mach-O architecture table")
+        }
+
+        for index in 0..<count {
+            let base = 8 + index * recordSize
+            let cpu = try be32(data, base)
+            guard cpu == cpuTypeArm64 else { continue }
+
+            let sliceOffset: UInt64
+            let sliceSize: UInt64
+            if is64 {
+                sliceOffset = try be64(data, base + 8)
+                sliceSize = try be64(data, base + 16)
+            } else {
+                sliceOffset = UInt64(try be32(data, base + 8))
+                sliceSize = UInt64(try be32(data, base + 12))
+            }
+
+            let end = sliceOffset.addingReportingOverflow(sliceSize)
+            guard !end.overflow,
+                  end.partialValue <= UInt64(data.count),
+                  sliceOffset <= UInt64(Int.max),
+                  sliceSize <= UInt64(Int.max) else {
+                throw MachOParserError.malformed("ARM64 universal slice exceeds file bounds")
+            }
+
+            return Data(data[Int(sliceOffset)..<Int(end.partialValue)])
+        }
+
+        throw MachOParserError.malformed("universal Mach-O does not contain an ARM64 slice")
+    }
+
     static func parse(_ data: Data) throws -> MachOImageInfo {
+        let data = try preferredArm64Slice(data)
         guard data.count >= 32 else { throw MachOParserError.tooSmall }
         let magic = try u32(data, 0)
         guard magic == mhMagic64 else { throw MachOParserError.unsupportedMagic(magic) }
@@ -154,6 +207,23 @@ struct MachOParser {
         let bytes = data[start..<boundedEnd]
         let prefix = bytes.prefix { $0 != 0 }
         return String(bytes: prefix, encoding: .utf8) ?? ""
+    }
+
+    private static func be32(_ data: Data, _ offset: Int) throws -> UInt32 {
+        guard offset + 4 <= data.count else { throw MachOParserError.malformed("read past EOF") }
+        return (UInt32(data[offset]) << 24) |
+               (UInt32(data[offset + 1]) << 16) |
+               (UInt32(data[offset + 2]) << 8) |
+               UInt32(data[offset + 3])
+    }
+
+    private static func be64(_ data: Data, _ offset: Int) throws -> UInt64 {
+        guard offset + 8 <= data.count else { throw MachOParserError.malformed("read past EOF") }
+        var value: UInt64 = 0
+        for i in 0..<8 {
+            value = (value << 8) | UInt64(data[offset + i])
+        }
+        return value
     }
 
     private static func u32(_ data: Data, _ offset: Int) throws -> UInt32 {
