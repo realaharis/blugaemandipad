@@ -36,6 +36,8 @@ struct ContentView: View {
     @State private var lolLaunchDryRun: LoLLaunchDryRunReport?
     @State private var lolRuntimeDiagnostics: LoLRuntimeDiagnosticReport?
     @State private var liveContainerBackend: LiveContainerBackendReport?
+    @State private var externalHandoff: LoLExternalHandoffReadiness?
+    @StateObject private var runtimeEvents = LoLRuntimeEventLog.shared
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -945,6 +947,50 @@ struct ContentView: View {
                         }
 
                         Text("Stage 18 validates the adapter contract for using LiveContainer as DarwinBridge's native execution backend while retaining DarwinBridge's LoL-specific compatibility analysis and shim layer.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-19 Real Runtime Test") {
+                        Button("Arm real LoL runtime observer") {
+                            externalHandoff = LoLExternalHandoffObserver.prepare(
+                                image: image,
+                                deepScan: deepSymbols,
+                                runtimeValidation: lolRuntimeValidation,
+                                backend: liveContainerBackend
+                            )
+                        }
+
+                        if let handoff = externalHandoff {
+                            row("External handoff", handoff.ready ? "ARMED" : "blocked")
+                            row("Expected LC_MAIN", handoff.expectedEntry.map { String(format: "0x%llX", $0) } ?? "missing")
+                            row("Imports", "\(handoff.importCount)")
+                            row("Runtime shims", "\(handoff.runtimeShimCount)")
+                            Text(handoff.note)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if !runtimeEvents.events.isEmpty {
+                            Text("Runtime checkpoints").font(.caption).bold()
+                            ForEach(runtimeEvents.events.suffix(40)) { event in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(event.phase)
+                                        .font(.caption2)
+                                        .bold()
+                                        .monospaced()
+                                    Text(event.detail)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+
+                        Button("Clear runtime checkpoints") {
+                            runtimeEvents.clear()
+                        }
+
+                        Text("Stage 19 arms DarwinBridge to observe and record the first real runtime events from the external LiveContainer execution handoff. It does not itself transfer control to imported executable code.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
