@@ -24,6 +24,11 @@ CLANG="$(xcrun --sdk iphoneos --find clang)"
 cp "$ROOT/Info.plist" "$APP/Info.plist"
 cp "$ROOT/JIT/darwinbridge-universal.js" "$APP/darwinbridge-universal.js"
 
+PLUGIN="$BUILD/livecontainer-plugin/DarwinBridgeLCPlugin.dylib"
+if [ -f "$PLUGIN" ]; then
+  cp "$PLUGIN" "$APP/DarwinBridgeLCPlugin.dylib"
+fi
+
 if command -v codesign >/dev/null 2>&1; then
   codesign --force --sign -     --entitlements "$ROOT/DarwinBridge.entitlements"     "$APP/DarwinBridge"
 fi
