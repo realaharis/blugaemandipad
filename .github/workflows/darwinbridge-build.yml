@@ -33,7 +33,7 @@ jobs:
       - name: Build controlled macOS ARM64 Mach-O
         working-directory: DarwinBridge
         run: |
-          mkdir -p build/test-target
+          mkdir -p artifacts/test-target
           SDK="$(xcrun --sdk macosx --show-sdk-path)"
           CLANG="$(xcrun --sdk macosx --find clang)"
           "$CLANG" \
@@ -41,14 +41,14 @@ jobs:
             -isysroot "$SDK" \
             -Wl,-no_pie \
             Tests/real_macho_return42.c \
-            -o build/test-target/darwinbridge-test-arm64
+            -o artifacts/test-target/darwinbridge-test-arm64
 
-          file build/test-target/darwinbridge-test-arm64
-          lipo -info build/test-target/darwinbridge-test-arm64
-          otool -l build/test-target/darwinbridge-test-arm64 > build/test-target/load-commands.txt
+          file artifacts/test-target/darwinbridge-test-arm64
+          lipo -info artifacts/test-target/darwinbridge-test-arm64
+          otool -l artifacts/test-target/darwinbridge-test-arm64 > artifacts/test-target/load-commands.txt
 
-          grep -A 4 "segname __TEXT" build/test-target/load-commands.txt
-          grep -A 4 "LC_MAIN" build/test-target/load-commands.txt
+          grep -A 4 "segname __TEXT" artifacts/test-target/load-commands.txt
+          grep -A 4 "LC_MAIN" artifacts/test-target/load-commands.txt
 
       - name: Build unsigned IPA
         working-directory: DarwinBridge
@@ -63,5 +63,5 @@ jobs:
         with:
           name: DarwinBridge-real-macho-test
           path: |
-            DarwinBridge/build/test-target/darwinbridge-test-arm64
-            DarwinBridge/build/test-target/load-commands.txt
+            DarwinBridge/artifacts/test-target/darwinbridge-test-arm64
+            DarwinBridge/artifacts/test-target/load-commands.txt
