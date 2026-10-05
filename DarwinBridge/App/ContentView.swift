@@ -37,6 +37,8 @@ struct ContentView: View {
     @State private var lolRuntimeDiagnostics: LoLRuntimeDiagnosticReport?
     @State private var liveContainerBackend: LiveContainerBackendReport?
     @State private var externalHandoff: LoLExternalHandoffReadiness?
+    @State private var firstRunPackageURL: URL?
+    @State private var firstRunPackageSummary: String?
     @StateObject private var runtimeEvents = LoLRuntimeEventLog.shared
     @State private var stikDebugStatus = "not requested"
 
@@ -991,6 +993,43 @@ struct ContentView: View {
                         }
 
                         Text("Stage 19 arms DarwinBridge to observe and record the first real runtime events from the external LiveContainer execution handoff. It does not itself transfer control to imported executable code.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-20B First Real Launch Package") {
+                        Button("Build LoL first-run IPA for LiveContainer") {
+                            do {
+                                guard let importedData else { return }
+                                let package = try LoLLiveContainerPackager.buildMinimalIPA(
+                                    executable: importedData
+                                )
+                                firstRunPackageURL = package.ipaURL
+                                firstRunPackageSummary = "Patched \(package.patchedDependencies.count) desktop dependency path(s); executable \(package.executableBytes) bytes; plugin \(package.pluginBytes) bytes."
+                                errorText = nil
+                            } catch {
+                                firstRunPackageURL = nil
+                                firstRunPackageSummary = nil
+                                errorText = error.localizedDescription
+                            }
+                        }
+                        .disabled(liveContainerBackend?.compatible != true ||
+                                  lolLaunchDryRun?.ready != true)
+
+                        if let firstRunPackageSummary {
+                            Text(firstRunPackageSummary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if let url = firstRunPackageURL {
+                            ShareLink(item: url) {
+                                Label("Export DarwinBridge-LoL-first-run.ipa", systemImage: "square.and.arrow.up")
+                            }
+                            row("Package", "READY")
+                        }
+
+                        Text("This produces the first minimal LiveContainer test package from the real LoL ARM64 executable and embeds DarwinBridgeLCPlugin. It is intentionally a first-start package: a launch, crash, loader error or compatibility exception is useful runtime evidence.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
