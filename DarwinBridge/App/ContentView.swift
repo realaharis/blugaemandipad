@@ -223,6 +223,53 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     }
 
+                    Section("Stage-6 Graphics + Input") {
+                        Button("Guest submit graphics commands") {
+                            let result = JITExecutionBackend.runGraphicsCommandQueueTest()
+                            graphicsResult = result
+
+                            if result.passed {
+                                Task { @MainActor in
+                                    _ = GraphicsInputBridge.shared.execute(result.commands)
+                                }
+                            }
+                        }
+
+                        if let graphicsResult {
+                            row("Debugger", graphicsResult.debuggerAttached ? "yes" : "no")
+                            row("JIT region", graphicsResult.regionPrepared ? "yes" : "no")
+                            row("Guest executed", graphicsResult.guestExecuted ? "yes" : "no")
+                            row("Commands", "\(graphicsResult.commands.count)")
+                            row("Graphics queue", graphicsResult.passed ? "PASS" : "not passed")
+                            Text(graphicsResult.note)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Button("Read latest input event") {
+                            Task { @MainActor in
+                                let event = GraphicsInputBridge.shared.lastInput
+                                inputSequence = event.sequence
+                                inputSummary = event.kind == "none"
+                                    ? "none"
+                                    : "\(event.kind) @ \(Int(event.x)),\(Int(event.y))"
+                            }
+                        }
+
+                        row("Input sequence", "\(inputSequence)")
+                        row("Latest input", inputSummary)
+
+                        Button("Dismiss graphics surface") {
+                            Task { @MainActor in
+                                GraphicsInputBridge.shared.dismiss()
+                            }
+                        }
+
+                        Text("Guest commands cross the boundary through shared memory. UIKit rendering and input capture occur only after guest execution returns.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     if let fixupPlan, !fixupPlan.resolutions.isEmpty {
                         Section("Symbol broker") {
                             ForEach(fixupPlan.resolutions) { symbol in
