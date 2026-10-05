@@ -33,6 +33,7 @@ struct ContentView: View {
     @State private var lolShimCoverage: LoLShimCoverageReport?
     @State private var lolRuntimeValidation: LoLRuntimeShimValidation?
     @State private var lolStage17Preflight: LoLStage17Preflight?
+    @State private var lolLaunchDryRun: LoLLaunchDryRunReport?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -820,6 +821,49 @@ struct ContentView: View {
                         }
 
                         Text("Stage 17 is the final preflight before real League client bring-up. It combines the actual ARM64 client, deep dyld metadata, resolved host imports and implemented LoL runtime shims into one launch-readiness checkpoint.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-17B LoL Launch Dry Run") {
+                        Button("Prepare real LoL launch image") {
+                            if let importedData {
+                                lolLaunchDryRun = LoLLaunchDryRunAnalyzer.analyze(
+                                    data: importedData,
+                                    image: image,
+                                    deepScan: deepSymbols,
+                                    runtimeValidation: lolRuntimeValidation
+                                )
+                            }
+                        }
+
+                        if let launch = lolLaunchDryRun {
+                            row("Launch image", launch.ready ? "READY" : "blocked")
+                            row("Imports resolved", "\(launch.resolvedImports)/\(launch.totalImports)")
+                            row("Unresolved", "\(launch.unresolvedImports)")
+                            row("Executable segments", "\(launch.executableSegments)")
+                            row("Writable segments", "\(launch.writableSegments)")
+                            row("Readable segments", "\(launch.readableSegments)")
+                            row("LC_MAIN", launch.entryOffset.map { String(format: "0x%llX", $0) } ?? "missing")
+
+                            Text("Launch checkpoints").font(.caption).bold()
+                            ForEach(launch.checkpoints, id: \.self) {
+                                Text("• \($0)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            if !launch.blockers.isEmpty {
+                                Text("Launch blockers").font(.caption).bold()
+                                ForEach(launch.blockers, id: \.self) {
+                                    Text("• \($0)")
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+                        }
+
+                        Text("Stage 17B resolves the complete real-client import surface against the host runtime, DarwinBridge LoL shims and intra-image weak symbols, then validates the client segment/entry layout. It prepares the launch image without transferring control to imported executable code.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
