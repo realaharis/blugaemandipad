@@ -148,11 +148,30 @@ struct LoLLiveContainerPackager {
 
     private static func compatibilityAlias(for path: String) -> String? {
         let p = path.lowercased()
+
+        // Desktop-only frameworks are provided by DarwinBridge shims. For
+        // frameworks that also exist on iOS, macOS embeds a /Versions/A or
+        // /Versions/C path that iOS dyld does not expose. Redirect those load
+        // commands to a distinct compatibility alias as well; the plugin is
+        // linked against the native iOS frameworks, so their symbols remain
+        // available through the process-wide resolver while dylib ordinals stay
+        // stable for the original LoL bind stream.
         if p.contains("appkit.framework") { return "DBAppKit.dylib" }
         if p.contains("coreservices.framework") { return "DBCoreServices.dylib" }
         if p.contains("cocoa.framework") { return "DBCocoa.dylib" }
         if p.contains("scriptingbridge.framework") { return "DBScriptingBridge.dylib" }
         if p.contains("diskarbitration.framework") { return "DBDiskArbitration.dylib" }
+
+        if p.contains("avfoundation.framework") { return "DBAVFoundation.dylib" }
+        if p.contains("cfnetwork.framework") { return "DBCFNetwork.dylib" }
+        if p.contains("corefoundation.framework") { return "DBCoreFoundation.dylib" }
+        if p.contains("coregraphics.framework") { return "DBCoreGraphics.dylib" }
+        if p.contains("coretext.framework") { return "DBCoreText.dylib" }
+        if p.contains("foundation.framework") { return "DBFoundation.dylib" }
+        if p.contains("security.framework") { return "DBSecurity.dylib" }
+        if p.contains("systemconfiguration.framework") { return "DBSystemConfiguration.dylib" }
+        if p.contains("iokit.framework") { return "DBIOKit.dylib" }
+
         return nil
     }
 
