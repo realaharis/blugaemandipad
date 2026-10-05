@@ -29,6 +29,7 @@ struct ContentView: View {
     @State private var lolStage15: LoLStage15Report?
     @State private var classicSymbols: ClassicSymbolSurfaceReport?
     @State private var deepSymbols: DeepSymbolScanReport?
+    @State private var lolCompatibilityPlan: LoLCompatibilityPlan?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -658,6 +659,56 @@ struct ContentView: View {
                         }
 
                         Text("Maximum-depth analysis combines classic symbol tables, chained-fixup imports, LC_DYLD_INFO bind/weak/lazy streams and export metadata, then de-duplicates the complete import surface and checks it against the current iOS process.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-16 LoL Compatibility Plan") {
+                        Button("Build compatibility plan from real imports") {
+                            if let deepSymbols {
+                                lolCompatibilityPlan = LoLCompatibilityPlanner.make(from: deepSymbols)
+                            }
+                        }
+                        .disabled(deepSymbols == nil)
+
+                        if let plan = lolCompatibilityPlan {
+                            row("Import coverage", "\(plan.coveragePercent)%")
+                            row("Resolved", "\(plan.resolvedImports)/\(plan.totalImports)")
+                            row("Unresolved", "\(plan.unresolvedImports)")
+                            row("Self/weak C++", "\(plan.selfUnresolved)")
+                            row("AppKit", "\(plan.appKitUnresolved)")
+                            row("ScriptingBridge", "\(plan.scriptingBridgeUnresolved)")
+                            row("CoreServices", "\(plan.coreServicesUnresolved)")
+                            row("Other", "\(plan.otherUnresolved)")
+
+                            Text("Unresolved by dependency")
+                                .font(.caption)
+                                .bold()
+                            ForEach(plan.buckets.filter { $0.unresolved > 0 }) { bucket in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("\(bucket.unresolved) — \(bucket.dependency)")
+                                        .font(.caption)
+                                        .bold()
+                                    ForEach(bucket.unresolvedSymbols.prefix(16), id: \.self) {
+                                        Text($0)
+                                            .font(.caption2)
+                                            .monospaced()
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+
+                            Text("Compatibility priorities")
+                                .font(.caption)
+                                .bold()
+                            ForEach(plan.priorities, id: \.self) {
+                                Text("• \($0)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Text("Stage 16 converts the maximum-depth scan into a concrete compatibility backlog grouped by the real League client dependency surface.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
