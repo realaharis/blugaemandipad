@@ -290,6 +290,12 @@ struct ContentView: View {
                             row("Executable segment", preflight.executableSegment ?? "—")
                             row("Guest entry", preflight.entryGuestAddress.map { String(format: "0x%llX", $0) } ?? "—")
                             row("Mapped entry", preflight.entryHostAddress.map { String(format: "0x%llX", $0) } ?? "—")
+                            row("LC_MAIN file offset", preflight.entryFileOffset.map { String(format: "0x%llX", $0) } ?? "—")
+                            row("Entry in __TEXT", preflight.entryOffsetInText.map { String(format: "0x%llX", $0) } ?? "—")
+                            row("__TEXT file offset", preflight.textFileOffset.map { String(format: "0x%llX", $0) } ?? "—")
+                            row("__TEXT file bytes", preflight.textFileSize.map(String.init) ?? "—")
+                            row("Executable range", preflight.textRangeValid ? "PASS" : "blocked")
+                            row("Stage-8A boundary", preflight.ready && preflight.textRangeValid ? "READY" : "blocked")
 
                             ForEach(preflight.notes, id: \.self) { note in
                                 Text(note)
