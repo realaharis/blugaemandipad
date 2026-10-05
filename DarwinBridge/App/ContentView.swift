@@ -27,6 +27,7 @@ struct ContentView: View {
     @State private var runtimeFoundation: RuntimeFoundationReport?
     @State private var stage11To14: Stage11To14Report?
     @State private var lolStage15: LoLStage15Report?
+    @State private var classicSymbols: ClassicSymbolSurfaceReport?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -535,6 +536,57 @@ struct ContentView: View {
                         }
 
                         Text("Import the actual ARM64 League of Legends macOS executable here. Stage 15 performs one large dependency/RPATH/import compatibility scan so subsequent work is driven by the real client rather than synthetic probes.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-15B Real LoL Symbols") {
+                        Button("Scan real LoL imported symbols") {
+                            do {
+                                if let importedData {
+                                    classicSymbols = try ClassicSymbolScanner.scan(
+                                        data: importedData,
+                                        image: image
+                                    )
+                                    errorText = nil
+                                }
+                            } catch {
+                                classicSymbols = nil
+                                errorText = error.localizedDescription
+                            }
+                        }
+
+                        if let symbols = classicSymbols {
+                            row("Symbol source", symbols.source)
+                            row("LC_SYMTAB", symbols.symtabPresent ? "present" : "missing")
+                            row("LC_DYSYMTAB", symbols.dysymtabPresent ? "present" : "missing")
+                            row("Imported symbols", "\(symbols.imported.count)")
+                            row("Host resolved", "\(symbols.resolvedCount)")
+                            row("Unresolved", "\(symbols.unresolvedCount)")
+
+                            if symbols.unresolvedCount > 0 {
+                                Text("Unresolved symbol surface")
+                                    .font(.caption)
+                                    .bold()
+                                ForEach(Array(symbols.imported.filter { !$0.hostResolved }.prefix(80))) { symbol in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(symbol.name)
+                                            .font(.caption2)
+                                            .monospaced()
+                                        Text(symbol.dependencyPath ?? "ordinal \(symbol.libraryOrdinal)")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                if symbols.unresolvedCount > 80 {
+                                    Text("+ \(symbols.unresolvedCount - 80) more unresolved symbols")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+
+                        Text("Stage 15B reads the real client's classic Mach-O symbol tables and groups undefined imports against their linked libraries. It is analysis-only and does not execute imported client code.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
