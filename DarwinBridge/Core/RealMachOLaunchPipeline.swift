@@ -7,6 +7,11 @@ struct RealMachOPreflight {
     let entryHostAddress: UInt64?
     let unresolvedImports: Int
     let executableSegment: String?
+    let entryFileOffset: UInt64?
+    let entryOffsetInText: UInt64?
+    let textFileOffset: UInt64?
+    let textFileSize: UInt64?
+    let textRangeValid: Bool
     let notes: [String]
 }
 
@@ -23,6 +28,11 @@ struct RealMachOLaunchPipeline {
                                       entryHostAddress: nil,
                                       unresolvedImports: fixupPlan?.unresolvedBindCount ?? 0,
                                       executableSegment: nil,
+                                      entryFileOffset: image.entryOffset,
+                                      entryOffsetInText: nil,
+                                      textFileOffset: nil,
+                                      textFileSize: nil,
+                                      textRangeValid: false,
                                       notes: ["Target is not ARM64."])
         }
 
@@ -32,6 +42,11 @@ struct RealMachOLaunchPipeline {
                                       entryHostAddress: nil,
                                       unresolvedImports: fixupPlan?.unresolvedBindCount ?? 0,
                                       executableSegment: nil,
+                                      entryFileOffset: image.entryOffset,
+                                      entryOffsetInText: nil,
+                                      textFileOffset: nil,
+                                      textFileSize: nil,
+                                      textRangeValid: false,
                                       notes: ["Encrypted Mach-O execution is not supported."])
         }
 
@@ -41,6 +56,11 @@ struct RealMachOLaunchPipeline {
                                       entryHostAddress: nil,
                                       unresolvedImports: fixupPlan?.unresolvedBindCount ?? 0,
                                       executableSegment: nil,
+                                      entryFileOffset: image.entryOffset,
+                                      entryOffsetInText: nil,
+                                      textFileOffset: nil,
+                                      textFileSize: nil,
+                                      textRangeValid: false,
                                       notes: ["LC_MAIN entry point is missing."])
         }
 
@@ -52,6 +72,11 @@ struct RealMachOLaunchPipeline {
                                       entryHostAddress: nil,
                                       unresolvedImports: fixupPlan?.unresolvedBindCount ?? 0,
                                       executableSegment: nil,
+                                      entryFileOffset: image.entryOffset,
+                                      entryOffsetInText: nil,
+                                      textFileOffset: nil,
+                                      textFileSize: nil,
+                                      textRangeValid: false,
                                       notes: ["__TEXT segment is missing."])
         }
 
@@ -61,10 +86,16 @@ struct RealMachOLaunchPipeline {
                                       entryHostAddress: nil,
                                       unresolvedImports: fixupPlan?.unresolvedBindCount ?? 0,
                                       executableSegment: text.name,
+                                      entryFileOffset: entryOffset,
+                                      entryOffsetInText: nil,
+                                      textFileOffset: text.fileOffset,
+                                      textFileSize: text.fileSize,
+                                      textRangeValid: false,
                                       notes: ["LC_MAIN entry offset lies outside __TEXT file bytes."])
         }
 
-        let entryGuest = text.vmAddress + entryOffset
+        let entryOffsetInText = entryOffset - text.fileOffset
+        let entryGuest = text.vmAddress + entryOffsetInText
         guard let guestSpace,
               let entryHost = guestSpace.hostPointer(for: entryGuest, byteCount: 4) else {
             return RealMachOPreflight(ready: false,
@@ -72,6 +103,11 @@ struct RealMachOLaunchPipeline {
                                       entryHostAddress: nil,
                                       unresolvedImports: fixupPlan?.unresolvedBindCount ?? 0,
                                       executableSegment: text.name,
+                                      entryFileOffset: entryOffset,
+                                      entryOffsetInText: entryOffsetInText,
+                                      textFileOffset: text.fileOffset,
+                                      textFileSize: text.fileSize,
+                                      textRangeValid: true,
                                       notes: ["Load guest + apply fixups before real entry-point bring-up."])
         }
 
@@ -91,6 +127,11 @@ struct RealMachOLaunchPipeline {
                                   entryHostAddress: UInt64(UInt(bitPattern: entryHost)),
                                   unresolvedImports: unresolved,
                                   executableSegment: text.name,
+                                  entryFileOffset: entryOffset,
+                                  entryOffsetInText: entryOffsetInText,
+                                  textFileOffset: text.fileOffset,
+                                  textFileSize: text.fileSize,
+                                  textRangeValid: true,
                                   notes: notes)
     }
 }
