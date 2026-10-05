@@ -30,6 +30,7 @@ struct ContentView: View {
     @State private var classicSymbols: ClassicSymbolSurfaceReport?
     @State private var deepSymbols: DeepSymbolScanReport?
     @State private var lolCompatibilityPlan: LoLCompatibilityPlan?
+    @State private var lolShimCoverage: LoLShimCoverageReport?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -709,6 +710,45 @@ struct ContentView: View {
                         }
 
                         Text("Stage 16 converts the maximum-depth scan into a concrete compatibility backlog grouped by the real League client dependency surface.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-16B LoL Shim Coverage") {
+                        Button("Map all unresolved LoL symbols") {
+                            if let lolCompatibilityPlan, let deepSymbols {
+                                lolShimCoverage = LoLShimCoverageAnalyzer.analyze(
+                                    plan: lolCompatibilityPlan,
+                                    scan: deepSymbols
+                                )
+                            }
+                        }
+                        .disabled(lolCompatibilityPlan == nil || deepSymbols == nil)
+
+                        if let coverage = lolShimCoverage {
+                            row("Mapped unresolved", "\(coverage.coveredCount)/\(coverage.totalCount)")
+                            row("Projected import coverage", "\(coverage.projectedCoveragePercent)%")
+                            row("Still unclassified", "\(coverage.remaining.count)")
+
+                            ForEach(coverage.items) { item in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack {
+                                        Text(item.symbol)
+                                            .font(.caption2)
+                                            .monospaced()
+                                        Spacer()
+                                        Text(item.covered ? "MAPPED" : "TODO")
+                                            .font(.caption2)
+                                            .foregroundStyle(item.covered ? Color.secondary : Color.orange)
+                                    }
+                                    Text("\(item.category) → \(item.strategy)")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+
+                        Text("This stage maps every currently unresolved League import to a concrete compatibility strategy before runtime shim implementation.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
