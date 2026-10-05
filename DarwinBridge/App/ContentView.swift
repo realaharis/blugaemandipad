@@ -34,6 +34,7 @@ struct ContentView: View {
     @State private var lolRuntimeValidation: LoLRuntimeShimValidation?
     @State private var lolStage17Preflight: LoLStage17Preflight?
     @State private var lolLaunchDryRun: LoLLaunchDryRunReport?
+    @State private var lolRuntimeDiagnostics: LoLRuntimeDiagnosticReport?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -864,6 +865,45 @@ struct ContentView: View {
                         }
 
                         Text("Stage 17B resolves the complete real-client import surface against the host runtime, DarwinBridge LoL shims and intra-image weak symbols, then validates the client segment/entry layout. It prepares the launch image without transferring control to imported executable code.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-17D Runtime Diagnostics") {
+                        Button("Capture LoL handoff diagnostics") {
+                            if let importedData {
+                                lolRuntimeDiagnostics = LoLRuntimeDiagnostics.capture(
+                                    data: importedData,
+                                    image: image,
+                                    deepScan: deepSymbols,
+                                    runtimeValidation: lolRuntimeValidation,
+                                    launchDryRun: lolLaunchDryRun
+                                )
+                            }
+                        }
+
+                        if let diagnostics = lolRuntimeDiagnostics {
+                            row("Execution handoff", diagnostics.readyForHandoff ? "READY" : "blocked")
+                            ForEach(diagnostics.checkpoints) { point in
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack {
+                                        Text(point.name).font(.caption)
+                                        Spacer()
+                                        Text(point.passed ? "PASS" : "BLOCKED")
+                                            .font(.caption)
+                                            .foregroundStyle(point.passed ? Color.secondary : Color.orange)
+                                    }
+                                    Text(point.detail)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Text(diagnostics.summary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Text("Stage 17D records the complete measured state immediately before the external execution handoff: client layout, LC_MAIN, import resolution, LoL shims, Objective-C, Metal and resource availability.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
