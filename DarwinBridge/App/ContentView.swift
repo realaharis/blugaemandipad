@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var inputSequence: UInt64 = 0
     @State private var inputSummary = "none"
     @State private var realMachOPreflight: RealMachOPreflight?
+    @State private var stage9Readiness: Stage9ReadinessReport?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -305,6 +306,36 @@ struct ContentView: View {
                         }
 
                         Text("Stage-7 validates a real imported Mach-O through parse → fixups → symbol resolution → LC_MAIN entry-point discovery. Direct control transfer remains disabled until __TEXT is remapped through JIT26 executable memory.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-9 Lightweight macOS App") {
+                        Button("Analyze app bring-up readiness") {
+                            stage9Readiness = Stage9ReadinessAnalyzer.analyze(
+                                image: image,
+                                fixupPlan: fixupPlan
+                            )
+                        }
+
+                        if let stage9 = stage9Readiness {
+                            row("CLI bring-up", stage9.readyForCLIBringUp ? "READY" : "blocked")
+                            row("Dependencies", "\(stage9.dependencyCount)")
+                            row("Native", "\(stage9.nativeCount)")
+                            row("Shim required", "\(stage9.shimCount)")
+                            row("Partial", "\(stage9.partialCount)")
+                            row("Blocked", "\(stage9.blockedCount)")
+                            row("Unknown", "\(stage9.unknownCount)")
+                            row("Unresolved imports", "\(stage9.unresolvedImports)")
+
+                            ForEach(stage9.notes, id: \.self) { note in
+                                Text(note)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Text("Stage-9 profiles the dependency and symbol surface for the first lightweight real macOS program. It does not transfer control to imported executable code.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
