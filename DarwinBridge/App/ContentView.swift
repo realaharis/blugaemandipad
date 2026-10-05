@@ -28,6 +28,7 @@ struct ContentView: View {
     @State private var stage11To14: Stage11To14Report?
     @State private var lolStage15: LoLStage15Report?
     @State private var classicSymbols: ClassicSymbolSurfaceReport?
+    @State private var deepSymbols: DeepSymbolScanReport?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -587,6 +588,76 @@ struct ContentView: View {
                         }
 
                         Text("Stage 15B reads the real client's classic Mach-O symbol tables and groups undefined imports against their linked libraries. It is analysis-only and does not execute imported client code.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-15C Deep LoL Metadata Scan") {
+                        Button("Run maximum-depth LoL scan") {
+                            do {
+                                if let importedData {
+                                    deepSymbols = try DeepSymbolScanner.scan(
+                                        data: importedData,
+                                        image: image
+                                    )
+                                    errorText = nil
+                                }
+                            } catch {
+                                deepSymbols = nil
+                                errorText = error.localizedDescription
+                            }
+                        }
+
+                        if let deep = deepSymbols {
+                            row("Metadata sources", "\(deep.sources.count)")
+                            row("Classic imports", "\(deep.classicImportCount)")
+                            row("Chained imports", "\(deep.chainedImportCount)")
+                            row("Dyld bind imports", "\(deep.bindImportCount)")
+                            row("Weak-bind imports", "\(deep.weakBindImportCount)")
+                            row("Lazy-bind imports", "\(deep.lazyBindImportCount)")
+                            row("Exports", "\(deep.exportCount)")
+                            row("Merged imports", "\(deep.imports.count)")
+                            row("Host resolved", "\(deep.resolvedCount)")
+                            row("Unresolved", "\(deep.unresolvedCount)")
+
+                            Text("Detected metadata sources")
+                                .font(.caption)
+                                .bold()
+                            ForEach(deep.sources, id: \.self) {
+                                Text("• \($0)")
+                                    .font(.caption2)
+                                    .monospaced()
+                            }
+
+                            if deep.unresolvedCount > 0 {
+                                Text("Unresolved compatibility surface")
+                                    .font(.caption)
+                                    .bold()
+                                ForEach(Array(deep.imports.filter { !$0.hostResolved }.prefix(120))) { symbol in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(symbol.name)
+                                            .font(.caption2)
+                                            .monospaced()
+                                        Text("\(symbol.dependencyPath ?? "ordinal \(symbol.libraryOrdinal)") • \(symbol.source)")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                if deep.unresolvedCount > 120 {
+                                    Text("+ \(deep.unresolvedCount - 120) more unresolved symbols")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            ForEach(deep.notes, id: \.self) {
+                                Text($0)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Text("Maximum-depth analysis combines classic symbol tables, chained-fixup imports, LC_DYLD_INFO bind/weak/lazy streams and export metadata, then de-duplicates the complete import surface and checks it against the current iOS process.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
