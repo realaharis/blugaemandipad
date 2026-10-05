@@ -18,6 +18,9 @@ struct ContentView: View {
     @State private var runtimeCallResult: RuntimeCallResult?
     @State private var runtimeChainResult: RuntimeCallResult?
     @State private var appKitBridgeResult: AppKitBridgeTestResult?
+    @State private var graphicsResult: GraphicsCommandTestResult?
+    @State private var inputSequence: UInt64 = 0
+    @State private var inputSummary = "none"
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
