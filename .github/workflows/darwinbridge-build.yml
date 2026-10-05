@@ -51,6 +51,14 @@ jobs:
           grep -A 4 "segname __TEXT" artifacts/test-target/load-commands.txt
           grep -A 4 "LC_MAIN" artifacts/test-target/load-commands.txt
 
+      - name: Validate Stage 11-14 source integration
+        working-directory: DarwinBridge
+        run: |
+          grep -q "Stage11To14Analyzer" Core/Stage11To14Analyzer.swift
+          grep -q "Stage 11 → 14 Integration" App/ContentView.swift
+          grep -q "Metal device runtime" Core/Stage11To14Analyzer.swift
+          grep -q "Bundle root" Core/Stage11To14Analyzer.swift
+
       - name: Build unsigned IPA
         working-directory: DarwinBridge
         run: ./build.sh
