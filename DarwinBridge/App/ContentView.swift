@@ -31,6 +31,7 @@ struct ContentView: View {
     @State private var deepSymbols: DeepSymbolScanReport?
     @State private var lolCompatibilityPlan: LoLCompatibilityPlan?
     @State private var lolShimCoverage: LoLShimCoverageReport?
+    @State private var lolRuntimeValidation: LoLRuntimeShimValidation?
     @State private var stikDebugStatus = "not requested"
 
     var body: some View {
@@ -749,6 +750,39 @@ struct ContentView: View {
                         }
 
                         Text("This stage maps every currently unresolved League import to a concrete compatibility strategy before runtime shim implementation.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Stage-16C LoL Runtime Shims") {
+                        Button("Validate implemented LoL runtime shims") {
+                            if let deepSymbols {
+                                lolRuntimeValidation = LoLRuntimeShimValidator.validate(scan: deepSymbols)
+                            }
+                        }
+                        .disabled(deepSymbols == nil)
+
+                        if let validation = lolRuntimeValidation {
+                            row("Runtime shim symbols", "\(validation.runtimeResolved)")
+                            row("Intra-image/weak", "\(validation.weakIntraImage)")
+                            row("Covered unresolved", "\(validation.totalCovered)/34")
+                            row("Remaining", "\(validation.remaining.count)")
+                            row("Runtime shim status", validation.remaining.isEmpty ? "READY" : "partial")
+
+                            if !validation.remaining.isEmpty {
+                                Text("Remaining symbols")
+                                    .font(.caption)
+                                    .bold()
+                                ForEach(validation.remaining, id: \.self) {
+                                    Text($0)
+                                        .font(.caption2)
+                                        .monospaced()
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+                        }
+
+                        Text("Stage 16C validates actual runtime symbol providers for the LoL-specific AppKit, ScriptingBridge, CoreServices and dyld compatibility surface. Self/weak C++ imports remain assigned to intra-image resolution.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
