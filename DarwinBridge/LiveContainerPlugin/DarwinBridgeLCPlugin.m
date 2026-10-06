@@ -824,6 +824,15 @@ DB_CFSTR(kCFStreamPropertyDataWritten, "kCFStreamPropertyDataWritten");
 __attribute__((visibility("default"), used))
 const CFTimeInterval kCFAbsoluteTimeIntervalSince1970 = 978307200.0;
 
+// LP64 constant-string runtime anchors required by Clang-generated
+// CFString/NSString constant objects in macOS Mach-O clients.
+__attribute__((visibility("default"), used))
+int __CFConstantStringClassReference[24] = {0};
+__attribute__((visibility("default"), used))
+void *__CFConstantStringClassReferencePtr = NULL;
+__attribute__((visibility("default"), used))
+int __NSConstantStringClassReference[24] = {0};
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
