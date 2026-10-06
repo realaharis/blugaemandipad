@@ -54,8 +54,10 @@ struct LoLLiveContainerPackager {
         // alias gets its own LC_ID_DYLIB and filename while exporting the same
         // DarwinBridge compatibility symbols.
         for redirect in redirects {
-            let aliasedPlugin = try pluginWithInstallName(plugin, redirect.installName)
-            try zip.add(path: "Payload/LeagueOfLegends.app/Frameworks/\(redirect.fileName)",
+            guard let fileName = redirect.fileName,
+                  let installName = redirect.installName else { continue }
+            let aliasedPlugin = try pluginWithInstallName(plugin, installName)
+            try zip.add(path: "Payload/LeagueOfLegends.app/Frameworks/\(fileName)",
                         data: aliasedPlugin)
         }
 
@@ -71,8 +73,9 @@ struct LoLLiveContainerPackager {
 
     private struct DependencyRedirect {
         let originalPath: String
-        let fileName: String
-        let installName: String
+        let replacementPath: String
+        let fileName: String?
+        let installName: String?
     }
 
     private static func patchForLiveContainer(_ data: inout Data) throws -> [DependencyRedirect] {
@@ -122,8 +125,8 @@ struct LoLLiveContainerPackager {
                 let end = cursor + cmdsize
                 let current = cString(data, start, end)
 
-                if let alias = compatibilityAlias(for: current) {
-                    let replacement = "@loader_path/Frameworks/\(alias)"
+                if let redirect = dependencyRedirect(for: current) {
+                    let replacement = redirect.replacementPath
                     let capacity = end - start
                     guard replacement.utf8.count + 1 <= capacity else {
                         throw LoLLiveContainerPackageError.unsupportedDependency(current)
@@ -132,11 +135,7 @@ struct LoLLiveContainerPackager {
                     for (index, byte) in replacement.utf8.enumerated() {
                         data[start + index] = byte
                     }
-                    redirects.append(DependencyRedirect(
-                        originalPath: current,
-                        fileName: alias,
-                        installName: "@rpath/\(alias)"
-                    ))
+                    redirects.append(redirect)
                 }
             }
 
@@ -146,31 +145,48 @@ struct LoLLiveContainerPackager {
         return redirects
     }
 
-    private static func compatibilityAlias(for path: String) -> String? {
+    private static func dependencyRedirect(for path: String) -> DependencyRedirect? {
         let p = path.lowercased()
 
-        // Desktop-only frameworks are provided by DarwinBridge shims. For
-        // frameworks that also exist on iOS, macOS embeds a /Versions/A or
-        // /Versions/C path that iOS dyld does not expose. Redirect those load
-        // commands to a distinct compatibility alias as well; the plugin is
-        // linked against the native iOS frameworks, so their symbols remain
-        // available through the process-wide resolver while dylib ordinals stay
-        // stable for the original LoL bind stream.
-        if p.contains("appkit.framework") { return "DBAppKit.dylib" }
-        if p.contains("coreservices.framework") { return "DBCoreServices.dylib" }
-        if p.contains("cocoa.framework") { return "DBCocoa.dylib" }
-        if p.contains("scriptingbridge.framework") { return "DBScriptingBridge.dylib" }
-        if p.contains("diskarbitration.framework") { return "DBDiskArbitration.dylib" }
+        func shim(_ fileName: String) -> DependencyRedirect {
+            DependencyRedirect(
+                originalPath: path,
+                replacementPath: "@loader_path/Frameworks/\(fileName)",
+                fileName: fileName,
+                installName: "@rpath/\(fileName)"
+            )
+        }
 
-        if p.contains("avfoundation.framework") { return "DBAVFoundation.dylib" }
-        if p.contains("cfnetwork.framework") { return "DBCFNetwork.dylib" }
-        if p.contains("corefoundation.framework") { return "DBCoreFoundation.dylib" }
-        if p.contains("coregraphics.framework") { return "DBCoreGraphics.dylib" }
-        if p.contains("coretext.framework") { return "DBCoreText.dylib" }
-        if p.contains("foundation.framework") { return "DBFoundation.dylib" }
-        if p.contains("security.framework") { return "DBSecurity.dylib" }
-        if p.contains("systemconfiguration.framework") { return "DBSystemConfiguration.dylib" }
-        if p.contains("iokit.framework") { return "DBIOKit.dylib" }
+        func native(_ framework: String) -> DependencyRedirect {
+            DependencyRedirect(
+                originalPath: path,
+                replacementPath: "/System/Library/Frameworks/\(framework).framework/\(framework)",
+                fileName: nil,
+                installName: nil
+            )
+        }
+
+        // Desktop-only frameworks still route to DarwinBridge shims.
+        if p.contains("appkit.framework") { return shim("DBAppKit.dylib") }
+        if p.contains("coreservices.framework") { return shim("DBCoreServices.dylib") }
+        if p.contains("cocoa.framework") { return shim("DBCocoa.dylib") }
+        if p.contains("scriptingbridge.framework") { return shim("DBScriptingBridge.dylib") }
+        if p.contains("diskarbitration.framework") { return shim("DBDiskArbitration.dylib") }
+        if p.contains("iokit.framework") { return shim("DBIOKit.dylib") }
+
+        // Frameworks that exist natively on iOS must keep their original dylib
+        // ordinal, but the macOS /Versions/A|C path must be rewritten to the
+        // actual iOS framework path. This lets dyld resolve Objective-C class
+        // exports (e.g. NSHTTPURLResponse) from the real framework instead of
+        // expecting those exports from a compatibility alias.
+        if p.contains("avfoundation.framework") { return native("AVFoundation") }
+        if p.contains("cfnetwork.framework") { return native("CFNetwork") }
+        if p.contains("corefoundation.framework") { return native("CoreFoundation") }
+        if p.contains("coregraphics.framework") { return native("CoreGraphics") }
+        if p.contains("coretext.framework") { return native("CoreText") }
+        if p.contains("foundation.framework") { return native("Foundation") }
+        if p.contains("security.framework") { return native("Security") }
+        if p.contains("systemconfiguration.framework") { return native("SystemConfiguration") }
 
         return nil
     }
