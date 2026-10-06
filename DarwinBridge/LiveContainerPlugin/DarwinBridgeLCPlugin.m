@@ -26,6 +26,85 @@ static void DBLog(NSString *message) {
     }
 }
 
+// Stage 21X-C: a visible, non-destructive startup probe. A black screen no
+// longer means "unknown": this overlay proves how far the real macOS client
+// progressed through the compatibility layer.
+static UIWindow *DBDiagnosticWindow = nil;
+
+static void DBShowRuntimeStatus(NSString *phase) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        @autoreleasepool {
+            UIApplication *app = UIApplication.sharedApplication;
+            DBLog([NSString stringWithFormat:@"visible-probe phase=%@ appState=%ld scenes=%lu",
+                   phase ?: @"unknown",
+                   (long)app.applicationState,
+                   (unsigned long)app.connectedScenes.count]);
+
+            UIWindow *window = nil;
+            for (UIScene *scene in app.connectedScenes) {
+                if (![scene isKindOfClass:UIWindowScene.class]) continue;
+                UIWindowScene *windowScene = (UIWindowScene *)scene;
+                for (UIWindow *candidate in windowScene.windows) {
+                    if (!candidate.hidden) { window = candidate; break; }
+                }
+                if (!DBDiagnosticWindow) {
+                    DBDiagnosticWindow = [[UIWindow alloc] initWithWindowScene:windowScene];
+                    DBDiagnosticWindow.frame = windowScene.coordinateSpace.bounds;
+                    DBDiagnosticWindow.windowLevel = UIWindowLevelAlert + 100;
+                    UIViewController *vc = [UIViewController new];
+                    vc.view.backgroundColor = UIColor.clearColor;
+                    DBDiagnosticWindow.rootViewController = vc;
+                    DBDiagnosticWindow.hidden = NO;
+                }
+                break;
+            }
+
+            UIView *host = DBDiagnosticWindow.rootViewController.view ?: window;
+            if (!host) {
+                DBLog(@"visible-probe no UIKit window available");
+                return;
+            }
+
+            const NSInteger tag = 0xDB21C;
+            UILabel *label = (UILabel *)[host viewWithTag:tag];
+            if (![label isKindOfClass:UILabel.class]) {
+                label = [[UILabel alloc] initWithFrame:CGRectZero];
+                label.tag = tag;
+                label.numberOfLines = 2;
+                label.textAlignment = NSTextAlignmentCenter;
+                label.font = [UIFont monospacedSystemFontOfSize:12 weight:UIFontWeightSemibold];
+                label.textColor = UIColor.whiteColor;
+                label.backgroundColor = [UIColor colorWithWhite:0 alpha:0.82];
+                label.layer.cornerRadius = 10;
+                label.layer.masksToBounds = YES;
+                [host addSubview:label];
+            }
+            CGFloat width = MIN(MAX(host.bounds.size.width - 32.0, 260.0), 560.0);
+            label.frame = CGRectMake((host.bounds.size.width - width) * 0.5, 24.0, width, 54.0);
+            label.text = [NSString stringWithFormat:@"DarwinBridge 21X-C\n%@", phase ?: @"unknown"];
+        }
+    });
+}
+
+static void DBScheduleRuntimeWatchdog(void) {
+    NSArray<NSNumber *> *delays = @[@1, @3, @10];
+    for (NSNumber *seconds in delays) {
+        int64_t delay = seconds.longLongValue;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay * NSEC_PER_SEC),
+                       dispatch_get_main_queue(), ^{
+            UIApplication *app = UIApplication.sharedApplication;
+            NSUInteger windows = 0;
+            for (UIScene *scene in app.connectedScenes) {
+                if ([scene isKindOfClass:UIWindowScene.class]) {
+                    windows += ((UIWindowScene *)scene).windows.count;
+                }
+            }
+            DBLog([NSString stringWithFormat:@"heartbeat +%llds appState=%ld windows=%lu",
+                   delay, (long)app.applicationState, (unsigned long)windows]);
+        });
+    }
+}
+
 static void DBFatalSignalHandler(int sig) {
     const char *name = "SIGNAL";
     if (sig == SIGABRT) name = "SIGABRT";
@@ -282,6 +361,9 @@ DB_EMPTY_CLASS(NSAppleEventManager)
     return app;
 }
 - (void)run {
+    DBLog(@"checkpoint=nsapplication-run-enter");
+    DBShowRuntimeStatus(@"NSApplication.run reached");
+    DBScheduleRuntimeWatchdog();
     DBLog(@"NSApplication run requested; UIKit host keeps the process event loop alive");
 }
 - (void)terminate:(id)sender {
@@ -1077,6 +1159,8 @@ static void DBDarwinBridgePluginInit(void) {
     NSApp = [NSApplication sharedApplication];
     DBLog(@"compatibility plugin loaded");
     DBLog(@"checkpoint=plugin-constructor-complete");
+    DBShowRuntimeStatus(@"plugin constructor complete");
+    DBScheduleRuntimeWatchdog();
     DBLog([NSString stringWithFormat:@"UIKit=%@ MetalClassProbe=%@",
            NSStringFromClass(UIApplication.class),
            NSClassFromString(@"MTLDevice") ? @"yes" : @"no"]);
