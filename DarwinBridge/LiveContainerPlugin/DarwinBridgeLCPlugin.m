@@ -104,6 +104,8 @@ DB_EMPTY_CLASS(NSAppleEventManager)
 __attribute__((visibility("default"), used))
 Class DBExportedNSHTTPURLResponse __asm__("_OBJC_CLASS_$_NSHTTPURLResponse") = Nil;
 
+Class DBExportedNSAppleEventManager __asm__("_OBJC_CLASS_$_NSAppleEventManager") = Nil;
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
@@ -153,7 +155,9 @@ static void DBDarwinBridgePluginInit(void) {
         httpResponseClass = DBNSHTTPURLResponseShim.class;
     }
     DBExportedNSHTTPURLResponse = httpResponseClass;
+    DBExportedNSAppleEventManager = DBNSAppleEventManagerShim.class;
     DBLog([NSString stringWithFormat:@"exported NSHTTPURLResponse class symbol -> %@", NSStringFromClass(httpResponseClass)]);
+    DBLog(@"exported NSAppleEventManager compatibility class symbol");
 
     NSApp = [NSApplication sharedApplication];
     DBLog(@"compatibility plugin loaded");
