@@ -757,6 +757,73 @@ const CFRunLoopMode kCFRunLoopDefaultMode = CFSTR("kCFRunLoopDefaultMode");
 __attribute__((visibility("default"), used))
 const CFRunLoopMode kCFRunLoopCommonModes = CFSTR("kCFRunLoopCommonModes");
 
+
+// CoreFoundation legacy data constants.  Several macOS clients bind these
+// through the CoreFoundation ordinal even when modern iOS exposes equivalent
+// values from a different image.
+#define DB_CFSTR(sym, value) \
+    __attribute__((visibility("default"), used)) \
+    const CFStringRef sym = CFSTR(value)
+
+DB_CFSTR(kCFBundleExecutableKey, "CFBundleExecutable");
+DB_CFSTR(kCFBundleInfoDictionaryVersionKey, "CFBundleInfoDictionaryVersion");
+DB_CFSTR(kCFBundleIdentifierKey, "CFBundleIdentifier");
+DB_CFSTR(kCFBundleVersionKey, "CFBundleVersion");
+DB_CFSTR(kCFBundleDevelopmentRegionKey, "CFBundleDevelopmentRegion");
+DB_CFSTR(kCFBundleNameKey, "CFBundleName");
+DB_CFSTR(kCFBundleLocalizationsKey, "CFBundleLocalizations");
+
+DB_CFSTR(kCFErrorDomainMach, "NSMachErrorDomain");
+DB_CFSTR(kCFErrorDomainOSStatus, "NSOSStatusErrorDomain");
+DB_CFSTR(kCFErrorDomainPOSIX, "NSPOSIXErrorDomain");
+DB_CFSTR(kCFErrorDomainCocoa, "NSCocoaErrorDomain");
+DB_CFSTR(kCFErrorDescriptionKey, "NSDescription");
+DB_CFSTR(kCFErrorLocalizedDescriptionKey, "NSLocalizedDescription");
+DB_CFSTR(kCFErrorLocalizedFailureReasonKey, "NSLocalizedFailureReason");
+DB_CFSTR(kCFErrorLocalizedRecoverySuggestionKey, "NSLocalizedRecoverySuggestion");
+DB_CFSTR(kCFErrorUnderlyingErrorKey, "NSUnderlyingError");
+DB_CFSTR(kCFErrorURLKey, "NSURL");
+DB_CFSTR(kCFErrorFilePathKey, "NSFilePath");
+
+DB_CFSTR(kCFGregorianCalendar, "gregorian");
+DB_CFSTR(kCFLocaleCountryCode, "kCFLocaleCountryCodeKey");
+DB_CFSTR(kCFStringTransformStripCombiningMarks, ")kCFStringTransformStripCombiningMarks");
+DB_CFSTR(kCFStringTransformToLatin, ")kCFStringTransformToLatin");
+
+DB_CFSTR(kCFPreferencesAnyApplication, "kCFPreferencesAnyApplication");
+DB_CFSTR(kCFPreferencesCurrentApplication, "kCFPreferencesCurrentApplication");
+DB_CFSTR(kCFPreferencesAnyHost, "kCFPreferencesAnyHost");
+DB_CFSTR(kCFPreferencesCurrentHost, "kCFPreferencesCurrentHost");
+DB_CFSTR(kCFPreferencesAnyUser, "kCFPreferencesAnyUser");
+DB_CFSTR(kCFPreferencesCurrentUser, "kCFPreferencesCurrentUser");
+
+DB_CFSTR(kCFURLIsExcludedFromBackupKey, "NSURLIsExcludedFromBackupKey");
+DB_CFSTR(kCFURLFileDirectoryContents, "kCFURLFileDirectoryContents");
+DB_CFSTR(kCFURLFileExists, "kCFURLFileExists");
+
+DB_CFSTR(kCFStreamPropertyShouldCloseNativeSocket, "kCFStreamPropertyShouldCloseNativeSocket");
+DB_CFSTR(kCFStreamPropertySocketNativeHandle, "kCFStreamPropertySocketNativeHandle");
+DB_CFSTR(kCFStreamPropertySOCKSPassword, "kCFStreamPropertySOCKSPassword");
+DB_CFSTR(kCFStreamPropertySOCKSProxy, "kCFStreamPropertySOCKSProxy");
+DB_CFSTR(kCFStreamPropertySOCKSProxyHost, "SOCKSProxy");
+DB_CFSTR(kCFStreamPropertySOCKSProxyPort, "SOCKSPort");
+DB_CFSTR(kCFStreamPropertySOCKSUser, "kCFStreamPropertySOCKSUser");
+DB_CFSTR(kCFStreamPropertySOCKSVersion, "kCFStreamPropertySOCKSVersion");
+DB_CFSTR(kCFStreamPropertySocketSecurityLevel, "kCFStreamPropertySocketSecurityLevel");
+DB_CFSTR(kCFStreamSocketSOCKSVersion4, "kCFStreamSocketSOCKSVersion4");
+DB_CFSTR(kCFStreamSocketSOCKSVersion5, "kCFStreamSocketSOCKSVersion5");
+DB_CFSTR(kCFStreamSocketSecurityLevelNegotiatedSSL, "kCFStreamSocketSecurityLevelNegotiatedSSL");
+DB_CFSTR(kCFStreamSocketSecurityLevelNone, "kCFStreamSocketSecurityLevelNone");
+DB_CFSTR(kCFStreamSocketSecurityLevelSSLv2, "kCFStreamSocketSecurityLevelSSLv2");
+DB_CFSTR(kCFStreamSocketSecurityLevelSSLv3, "kCFStreamSocketSecurityLevelSSLv3");
+DB_CFSTR(kCFStreamSocketSecurityLevelTLSv1, "kCFStreamSocketSecurityLevelTLSv1");
+DB_CFSTR(kCFStreamPropertyDataWritten, "kCFStreamPropertyDataWritten");
+
+#undef DB_CFSTR
+
+__attribute__((visibility("default"), used))
+const CFTimeInterval kCFAbsoluteTimeIntervalSince1970 = 978307200.0;
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
