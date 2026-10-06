@@ -106,87 +106,86 @@ DB_EMPTY_CLASS(NSAppleEventManager)
 __attribute__((visibility("default"), used))
 Class DBExportedNSHTTPURLResponse __asm__("_OBJC_CLASS_$_NSHTTPURLResponse") = Nil;
 
-__attribute__((visibility("default"), used, weak))
-__attribute__((visibility("default"), used, weak))
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
+__attribute__((visibility("default"), used))
 Class DBExportedNSCharacterSet __asm__("_OBJC_CLASS_$_NSCharacterSet") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSMutableCharacterSet __asm__("_OBJC_CLASS_$_NSMutableCharacterSet") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSScanner __asm__("_OBJC_CLASS_$_NSScanner") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSLocale __asm__("_OBJC_CLASS_$_NSLocale") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSTimeZone __asm__("_OBJC_CLASS_$_NSTimeZone") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSCalendar __asm__("_OBJC_CLASS_$_NSCalendar") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSUUID __asm__("_OBJC_CLASS_$_NSUUID") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSIndexSet __asm__("_OBJC_CLASS_$_NSIndexSet") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSMutableIndexSet __asm__("_OBJC_CLASS_$_NSMutableIndexSet") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSSet __asm__("_OBJC_CLASS_$_NSSet") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSMutableSet __asm__("_OBJC_CLASS_$_NSMutableSet") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSOrderedSet __asm__("_OBJC_CLASS_$_NSOrderedSet") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSMutableOrderedSet __asm__("_OBJC_CLASS_$_NSMutableOrderedSet") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSNull __asm__("_OBJC_CLASS_$_NSNull") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSRegularExpression __asm__("_OBJC_CLASS_$_NSRegularExpression") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSPredicate __asm__("_OBJC_CLASS_$_NSPredicate") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSSortDescriptor __asm__("_OBJC_CLASS_$_NSSortDescriptor") = Nil;
 Class DBExportedNSAutoreleasePool __asm__("_OBJC_CLASS_$_NSAutoreleasePool") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSObject __asm__("_OBJC_CLASS_$_NSObject") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSException __asm__("_OBJC_CLASS_$_NSException") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSRunLoop __asm__("_OBJC_CLASS_$_NSRunLoop") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSThread __asm__("_OBJC_CLASS_$_NSThread") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSTimer __asm__("_OBJC_CLASS_$_NSTimer") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSDate __asm__("_OBJC_CLASS_$_NSDate") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSValue __asm__("_OBJC_CLASS_$_NSValue") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSNumber __asm__("_OBJC_CLASS_$_NSNumber") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSMutableArray __asm__("_OBJC_CLASS_$_NSMutableArray") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSMutableDictionary __asm__("_OBJC_CLASS_$_NSMutableDictionary") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSMutableData __asm__("_OBJC_CLASS_$_NSMutableData") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSMutableString __asm__("_OBJC_CLASS_$_NSMutableString") = Nil;
 Class DBExportedNSUserDefaults __asm__("_OBJC_CLASS_$_NSUserDefaults") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSNotificationCenter __asm__("_OBJC_CLASS_$_NSNotificationCenter") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSProcessInfo __asm__("_OBJC_CLASS_$_NSProcessInfo") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSFileManager __asm__("_OBJC_CLASS_$_NSFileManager") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSBundle __asm__("_OBJC_CLASS_$_NSBundle") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSURL __asm__("_OBJC_CLASS_$_NSURL") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSData __asm__("_OBJC_CLASS_$_NSData") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSString __asm__("_OBJC_CLASS_$_NSString") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSArray __asm__("_OBJC_CLASS_$_NSArray") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSDictionary __asm__("_OBJC_CLASS_$_NSDictionary") = Nil;
-__attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used))
 Class DBExportedNSError __asm__("_OBJC_CLASS_$_NSError") = Nil;
 
 __attribute__((visibility("default"), used))
