@@ -389,7 +389,11 @@ Class DBExportedNSNetServiceBrowser __asm__("_OBJC_CLASS_$_NSNetServiceBrowser")
 __attribute__((visibility("default"), used))
 Class DBExportedNSInputStream __asm__("_OBJC_CLASS_$_NSInputStream") = Nil;
 __attribute__((visibility("default"), used))
+Class DBExportedNSInputStreamMeta __asm__("_OBJC_METACLASS_$_NSInputStream") = Nil;
+__attribute__((visibility("default"), used))
 Class DBExportedNSOutputStream __asm__("_OBJC_CLASS_$_NSOutputStream") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSOutputStreamMeta __asm__("_OBJC_METACLASS_$_NSOutputStream") = Nil;
 
 
 // CFNetwork on macOS exposes a number of real data globals that older/native
@@ -874,7 +878,9 @@ static void DBDarwinBridgePluginInit(void) {
     DBExportedNSNetService = objc_getClass("NSNetService");
     DBExportedNSNetServiceBrowser = objc_getClass("NSNetServiceBrowser");
     DBExportedNSInputStream = objc_getClass("NSInputStream");
+    DBExportedNSInputStreamMeta = objc_getMetaClass("NSInputStream");
     DBExportedNSOutputStream = objc_getClass("NSOutputStream");
+    DBExportedNSOutputStreamMeta = objc_getMetaClass("NSOutputStream");
     DBLog([NSString stringWithFormat:@"exported NSHTTPURLResponse class symbol -> %@", NSStringFromClass(httpResponseClass)]);
     DBLog(@"exported CFNetwork/Foundation URL compatibility class symbols");
 
