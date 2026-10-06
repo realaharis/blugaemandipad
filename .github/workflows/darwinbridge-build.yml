@@ -77,6 +77,8 @@ jobs:
           grep -q " _NSFontAttributeName$" build/livecontainer-plugin/exports.txt
           grep -q " _NSForegroundColorAttributeName$" build/livecontainer-plugin/exports.txt
           grep -q " _NSParagraphStyleAttributeName$" build/livecontainer-plugin/exports.txt
+          grep -q " ___CFConstantStringClassReference$" build/livecontainer-plugin/exports.txt
+          grep -q " ___NSConstantStringClassReference$" build/livecontainer-plugin/exports.txt
 
       - name: Build unsigned IPA
         working-directory: DarwinBridge
