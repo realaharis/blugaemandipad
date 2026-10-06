@@ -742,6 +742,17 @@ DB_APPKITSTR(NSHTMLTextDocumentType, "NSHTML");
 
 #undef DB_APPKITSTR
 
+
+// CoreFoundation/Foundation run-loop mode aliases used by macOS binaries.
+__attribute__((visibility("default"), used))
+NSString * const NSDefaultRunLoopMode = @"kCFRunLoopDefaultMode";
+__attribute__((visibility("default"), used))
+NSString * const NSRunLoopCommonModes = @"kCFRunLoopCommonModes";
+__attribute__((visibility("default"), used))
+const CFRunLoopMode kCFRunLoopDefaultMode = CFSTR("kCFRunLoopDefaultMode");
+__attribute__((visibility("default"), used))
+const CFRunLoopMode kCFRunLoopCommonModes = CFSTR("kCFRunLoopCommonModes");
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
