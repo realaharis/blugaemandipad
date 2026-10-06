@@ -233,8 +233,8 @@ const CFStringRef DB_kCFStreamSSLValidatesCertificateChain __asm__("_kCFStreamSS
 // used by SecItem dictionaries so macOS-linked clients can bind through the
 // DBSecurity ordinal without depending on where modern iOS exports them.
 #define DB_SECSTR(sym, value) \
-    __attribute__((visibility("default"), used)) \
-    const CFStringRef DB_##sym __asm__("_" #sym) = CFSTR(value)
+    __attribute__((visibility("default"), used, weak)) \
+    const CFStringRef sym = CFSTR(value)
 
 DB_SECSTR(kSecClass, "class");
 DB_SECSTR(kSecClassCertificate, "cert");
