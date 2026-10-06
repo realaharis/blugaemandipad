@@ -419,6 +419,68 @@ DB_SECSTR(kSecTrustRevocationValidUntilDate, "TrustExpirationDate");
 
 #undef DB_SECSTR
 
+
+// Foundation data constants frequently bind to the Foundation dylib ordinal.
+// Export the common URL/error/defaults/stream globals through DBFoundation.
+#define DB_FNDSTR(sym, value) \
+    __attribute__((visibility("default"), used, weak)) \
+    NSString * const sym = @value
+
+DB_FNDSTR(NSURLErrorDomain, "NSURLErrorDomain");
+DB_FNDSTR(NSURLErrorKey, "NSURL");
+DB_FNDSTR(NSPOSIXErrorDomain, "NSPOSIXErrorDomain");
+DB_FNDSTR(NSOSStatusErrorDomain, "NSOSStatusErrorDomain");
+DB_FNDSTR(NSMachErrorDomain, "NSMachErrorDomain");
+DB_FNDSTR(NSCocoaErrorDomain, "NSCocoaErrorDomain");
+DB_FNDSTR(NSUnderlyingErrorKey, "NSUnderlyingError");
+DB_FNDSTR(NSLocalizedDescriptionKey, "NSLocalizedDescription");
+DB_FNDSTR(NSLocalizedFailureReasonErrorKey, "NSLocalizedFailureReason");
+DB_FNDSTR(NSLocalizedRecoverySuggestionErrorKey, "NSLocalizedRecoverySuggestion");
+DB_FNDSTR(NSLocalizedRecoveryOptionsErrorKey, "NSLocalizedRecoveryOptions");
+DB_FNDSTR(NSRecoveryAttempterErrorKey, "NSRecoveryAttempter");
+DB_FNDSTR(NSHelpAnchorErrorKey, "NSHelpAnchor");
+DB_FNDSTR(NSStringEncodingErrorKey, "NSStringEncodingErrorKey");
+DB_FNDSTR(NSFilePathErrorKey, "NSFilePathErrorKey");
+DB_FNDSTR(NSErrorFailingURLStringKey, "NSErrorFailingURLStringKey");
+DB_FNDSTR(NSURLErrorFailingURLPeerTrustErrorKey, "NSURLErrorFailingURLPeerTrustErrorKey");
+DB_FNDSTR(NSURLErrorBackgroundTaskCancelledReasonKey, "NSURLErrorBackgroundTaskCancelledReasonKey");
+
+DB_FNDSTR(NSGlobalDomain, "NSGlobalDomain");
+DB_FNDSTR(NSArgumentDomain, "NSArgumentDomain");
+DB_FNDSTR(NSRegistrationDomain, "NSRegistrationDomain");
+DB_FNDSTR(NSUserDefaultsDidChangeNotification, "NSUserDefaultsDidChangeNotification");
+DB_FNDSTR(NSUserDefaultsSizeLimitExceededNotification, "NSUserDefaultsSizeLimitExceededNotification");
+
+DB_FNDSTR(NSFileType, "NSFileType");
+DB_FNDSTR(NSFileSize, "NSFileSize");
+DB_FNDSTR(NSFileModificationDate, "NSFileModificationDate");
+DB_FNDSTR(NSURLFileScheme, "file");
+
+DB_FNDSTR(NSStreamSocketSecurityLevelKey, "NSStreamSocketSecurityLevelKey");
+DB_FNDSTR(NSStreamSocketSecurityLevelNone, "NSStreamSocketSecurityLevelNone");
+DB_FNDSTR(NSStreamSocketSecurityLevelSSLv2, "NSStreamSocketSecurityLevelSSLv2");
+DB_FNDSTR(NSStreamSocketSecurityLevelSSLv3, "NSStreamSocketSecurityLevelSSLv3");
+DB_FNDSTR(NSStreamSocketSecurityLevelTLSv1, "NSStreamSocketSecurityLevelTLSv1");
+DB_FNDSTR(NSStreamSocketSecurityLevelNegotiatedSSL, "NSStreamSocketSecurityLevelNegotiatedSSL");
+DB_FNDSTR(NSStreamSOCKSProxyConfigurationKey, "NSStreamSOCKSProxyConfigurationKey");
+DB_FNDSTR(NSStreamSOCKSProxyHostKey, "NSStreamSOCKSProxyHostKey");
+DB_FNDSTR(NSStreamSOCKSProxyPortKey, "NSStreamSOCKSProxyPortKey");
+DB_FNDSTR(NSStreamSOCKSProxyVersionKey, "NSStreamSOCKSProxyVersionKey");
+DB_FNDSTR(NSStreamSOCKSProxyUserKey, "NSStreamSOCKSProxyUserKey");
+DB_FNDSTR(NSStreamSOCKSProxyPasswordKey, "NSStreamSOCKSProxyPasswordKey");
+DB_FNDSTR(NSStreamSOCKSProxyVersion4, "NSStreamSOCKSProxyVersion4");
+DB_FNDSTR(NSStreamSOCKSProxyVersion5, "NSStreamSOCKSProxyVersion5");
+DB_FNDSTR(NSStreamSocketSSLErrorDomain, "NSStreamSocketSSLErrorDomain");
+DB_FNDSTR(NSStreamSOCKSErrorDomain, "NSStreamSOCKSErrorDomain");
+DB_FNDSTR(NSStreamNetworkServiceType, "NSStreamNetworkServiceType");
+DB_FNDSTR(NSStreamNetworkServiceTypeVoIP, "NSStreamNetworkServiceTypeVoIP");
+DB_FNDSTR(NSStreamNetworkServiceTypeVideo, "NSStreamNetworkServiceTypeVideo");
+DB_FNDSTR(NSStreamNetworkServiceTypeBackground, "NSStreamNetworkServiceTypeBackground");
+DB_FNDSTR(NSStreamNetworkServiceTypeVoice, "NSStreamNetworkServiceTypeVoice");
+DB_FNDSTR(NSStreamNetworkServiceTypeCallSignaling, "NSStreamNetworkServiceTypeCallSignaling");
+
+#undef DB_FNDSTR
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
