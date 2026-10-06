@@ -350,7 +350,12 @@ DB_EMPTY_CLASS(NSAppleEventManager)
 + (instancetype)sharedApplication;
 - (void)run;
 - (void)terminate:(id)sender;
+- (void)finishLaunching;
+- (BOOL)isRunning;
+- (void)activateIgnoringOtherApps:(BOOL)flag;
 @end
+
+static volatile BOOL DBNSApplicationShouldRun = YES;
 
 @implementation NSApplication
 + (instancetype)sharedApplication {
@@ -360,14 +365,41 @@ DB_EMPTY_CLASS(NSAppleEventManager)
     DBLog(@"NSApplication sharedApplication");
     return app;
 }
+- (void)finishLaunching {
+    DBLog(@"checkpoint=nsapplication-finish-launching");
+    DBShowRuntimeStatus(@"NSApplication.finishLaunching");
+}
+- (BOOL)isRunning {
+    return DBNSApplicationShouldRun;
+}
+- (void)activateIgnoringOtherApps:(BOOL)flag {
+    DBLog([NSString stringWithFormat:@"NSApplication activateIgnoringOtherApps=%@", flag ? @"YES" : @"NO"]);
+    DBShowRuntimeStatus(@"NSApplication activated");
+}
 - (void)run {
     DBLog(@"checkpoint=nsapplication-run-enter");
     DBShowRuntimeStatus(@"NSApplication.run reached");
     DBScheduleRuntimeWatchdog();
-    DBLog(@"NSApplication run requested; UIKit host keeps the process event loop alive");
+    DBNSApplicationShouldRun = YES;
+
+    // The original macOS executable expects NSApplication.run to own an event
+    // loop. Returning immediately makes main unwind before queued UIKit/CEF
+    // bootstrap work can execute. LiveContainer already supplies the UIKit
+    // process; keep the guest thread/run loop alive without invoking a second
+    // UIApplicationMain.
+    NSRunLoop *loop = [NSRunLoop currentRunLoop];
+    while (DBNSApplicationShouldRun) {
+        @autoreleasepool {
+            NSDate *until = [NSDate dateWithTimeIntervalSinceNow:0.05];
+            [loop runMode:NSDefaultRunLoopMode beforeDate:until];
+        }
+    }
+    DBLog(@"checkpoint=nsapplication-run-exit");
 }
 - (void)terminate:(id)sender {
     DBLog(@"NSApplication terminate requested");
+    DBNSApplicationShouldRun = NO;
+    CFRunLoopStop(CFRunLoopGetCurrent());
 }
 @end
 
