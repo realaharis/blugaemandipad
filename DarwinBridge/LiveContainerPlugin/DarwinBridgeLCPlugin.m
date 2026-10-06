@@ -43,6 +43,58 @@ DB_EMPTY_CLASS(NSWindow)
 DB_EMPTY_CLASS(SBApplication)
 DB_EMPTY_CLASS(NSAppleEventManager)
 
+@interface NSTask : DBCompatObject
+@property(copy) NSString *launchPath;
+@property(copy) NSArray<NSString *> *arguments;
+@property(copy) NSDictionary<NSString *, NSString *> *environment;
+@property(strong) id standardInput;
+@property(strong) id standardOutput;
+@property(strong) id standardError;
+@property(copy) NSURL *executableURL;
+@property(copy) NSArray<NSString *> *currentDirectoryPathComponents;
++ (instancetype)launchedTaskWithLaunchPath:(NSString *)path arguments:(NSArray<NSString *> *)arguments;
+- (void)launch;
+- (void)launchAndReturnError:(NSError **)error;
+- (void)terminate;
+- (void)interrupt;
+- (void)suspend;
+- (void)resume;
+- (void)waitUntilExit;
+- (BOOL)isRunning;
+- (int)terminationStatus;
+- (int)processIdentifier;
+@end
+
+@implementation NSTask {
+    BOOL _dbRunning;
+    int _dbTerminationStatus;
+}
++ (instancetype)launchedTaskWithLaunchPath:(NSString *)path arguments:(NSArray<NSString *> *)arguments {
+    NSTask *task = [NSTask new];
+    task.launchPath = path;
+    task.arguments = arguments;
+    [task launch];
+    return task;
+}
+- (void)launch {
+    _dbRunning = NO;
+    _dbTerminationStatus = 0;
+    DBLog([NSString stringWithFormat:@"NSTask launch suppressed path=%@ args=%@", self.launchPath ?: self.executableURL.path, self.arguments]);
+}
+- (void)launchAndReturnError:(NSError **)error {
+    if (error) *error = nil;
+    [self launch];
+}
+- (void)terminate { _dbRunning = NO; }
+- (void)interrupt { _dbRunning = NO; }
+- (void)suspend {}
+- (void)resume {}
+- (void)waitUntilExit {}
+- (BOOL)isRunning { return _dbRunning; }
+- (int)terminationStatus { return _dbTerminationStatus; }
+- (int)processIdentifier { return 0; }
+@end
+
 @interface DBNSHTTPURLResponseShim : NSURLResponse
 - (instancetype)initWithURL:(NSURL *)URL
                  statusCode:(NSInteger)statusCode
@@ -166,6 +218,14 @@ __attribute__((visibility("default"), used))
 Class DBExportedNSMutableData __asm__("_OBJC_CLASS_$_NSMutableData") = Nil;
 __attribute__((visibility("default"), used))
 Class DBExportedNSMutableString __asm__("_OBJC_CLASS_$_NSMutableString") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSPipe __asm__("_OBJC_CLASS_$_NSPipe") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSFileHandle __asm__("_OBJC_CLASS_$_NSFileHandle") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSOperation __asm__("_OBJC_CLASS_$_NSOperation") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSOperationQueue __asm__("_OBJC_CLASS_$_NSOperationQueue") = Nil;
 Class DBExportedNSUserDefaults __asm__("_OBJC_CLASS_$_NSUserDefaults") = Nil;
 __attribute__((visibility("default"), used))
 Class DBExportedNSNotificationCenter __asm__("_OBJC_CLASS_$_NSNotificationCenter") = Nil;
@@ -629,6 +689,10 @@ static void DBDarwinBridgePluginInit(void) {
     DBExportedNSMutableDictionary = objc_getClass("NSMutableDictionary");
     DBExportedNSMutableData = objc_getClass("NSMutableData");
     DBExportedNSMutableString = objc_getClass("NSMutableString");
+    DBExportedNSPipe = objc_getClass("NSPipe");
+    DBExportedNSFileHandle = objc_getClass("NSFileHandle");
+    DBExportedNSOperation = objc_getClass("NSOperation");
+    DBExportedNSOperationQueue = objc_getClass("NSOperationQueue");
     DBExportedNSUserDefaults = objc_getClass("NSUserDefaults");
     DBExportedNSNotificationCenter = objc_getClass("NSNotificationCenter");
     DBExportedNSProcessInfo = objc_getClass("NSProcessInfo");
