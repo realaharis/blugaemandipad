@@ -28,6 +28,90 @@ static void DBLog(NSString *message) {
 
 DB_EMPTY_CLASS(NSAlert)
 DB_EMPTY_CLASS(NSBitmapImageRep)
+
+@interface NSColor : DBCompatObject
+@property(nonatomic, strong) UIColor *dbColor;
++ (instancetype)blackColor;
++ (instancetype)whiteColor;
++ (instancetype)clearColor;
++ (instancetype)redColor;
++ (instancetype)greenColor;
++ (instancetype)blueColor;
++ (instancetype)grayColor;
++ (instancetype)lightGrayColor;
++ (instancetype)darkGrayColor;
++ (instancetype)colorWithCalibratedRed:(CGFloat)red green:(CGFloat)green blue:(CGFloat)blue alpha:(CGFloat)alpha;
++ (instancetype)colorWithDeviceRed:(CGFloat)red green:(CGFloat)green blue:(CGFloat)blue alpha:(CGFloat)alpha;
+- (CGColorRef)CGColor;
+@end
+
+@implementation NSColor
++ (instancetype)db_wrap:(UIColor *)color {
+    NSColor *value = [NSColor new];
+    value.dbColor = color;
+    return value;
+}
++ (instancetype)blackColor { return [self db_wrap:UIColor.blackColor]; }
++ (instancetype)whiteColor { return [self db_wrap:UIColor.whiteColor]; }
++ (instancetype)clearColor { return [self db_wrap:UIColor.clearColor]; }
++ (instancetype)redColor { return [self db_wrap:UIColor.redColor]; }
++ (instancetype)greenColor { return [self db_wrap:UIColor.greenColor]; }
++ (instancetype)blueColor { return [self db_wrap:UIColor.blueColor]; }
++ (instancetype)grayColor { return [self db_wrap:UIColor.grayColor]; }
++ (instancetype)lightGrayColor { return [self db_wrap:UIColor.lightGrayColor]; }
++ (instancetype)darkGrayColor { return [self db_wrap:UIColor.darkGrayColor]; }
++ (instancetype)colorWithCalibratedRed:(CGFloat)red green:(CGFloat)green blue:(CGFloat)blue alpha:(CGFloat)alpha {
+    return [self db_wrap:[UIColor colorWithRed:red green:green blue:blue alpha:alpha]];
+}
++ (instancetype)colorWithDeviceRed:(CGFloat)red green:(CGFloat)green blue:(CGFloat)blue alpha:(CGFloat)alpha {
+    return [self colorWithCalibratedRed:red green:green blue:blue alpha:alpha];
+}
+- (CGColorRef)CGColor { return self.dbColor.CGColor; }
+@end
+
+@interface NSFont : DBCompatObject
+@property(nonatomic, strong) UIFont *dbFont;
++ (instancetype)systemFontOfSize:(CGFloat)size;
++ (instancetype)boldSystemFontOfSize:(CGFloat)size;
++ (instancetype)fontWithName:(NSString *)name size:(CGFloat)size;
+- (CGFloat)pointSize;
+@end
+
+@implementation NSFont
++ (instancetype)db_wrap:(UIFont *)font {
+    NSFont *value = [NSFont new];
+    value.dbFont = font;
+    return value;
+}
++ (instancetype)systemFontOfSize:(CGFloat)size { return [self db_wrap:[UIFont systemFontOfSize:size]]; }
++ (instancetype)boldSystemFontOfSize:(CGFloat)size { return [self db_wrap:[UIFont boldSystemFontOfSize:size]]; }
++ (instancetype)fontWithName:(NSString *)name size:(CGFloat)size {
+    UIFont *font = [UIFont fontWithName:name size:size] ?: [UIFont systemFontOfSize:size];
+    return [self db_wrap:font];
+}
+- (CGFloat)pointSize { return self.dbFont.pointSize; }
+@end
+
+@interface NSBezierPath : DBCompatObject
+@property(nonatomic, strong) UIBezierPath *dbPath;
++ (instancetype)bezierPath;
+- (void)moveToPoint:(CGPoint)point;
+- (void)lineToPoint:(CGPoint)point;
+- (void)closePath;
+@end
+@implementation NSBezierPath
++ (instancetype)bezierPath {
+    NSBezierPath *value = [NSBezierPath new];
+    value.dbPath = [UIBezierPath bezierPath];
+    return value;
+}
+- (void)moveToPoint:(CGPoint)point { [self.dbPath moveToPoint:point]; }
+- (void)lineToPoint:(CGPoint)point { [self.dbPath addLineToPoint:point]; }
+- (void)closePath { [self.dbPath closePath]; }
+@end
+
+DB_EMPTY_CLASS(NSWorkspace)
+DB_EMPTY_CLASS(NSRunningApplication)
 DB_EMPTY_CLASS(NSColorSpace)
 DB_EMPTY_CLASS(NSCursor)
 DB_EMPTY_CLASS(NSEvent)
