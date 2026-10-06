@@ -35,6 +35,8 @@ struct LoLLiveContainerPackager {
                                 displayName: String = "League of Legends") throws -> LoLLiveContainerPackageResult {
         var executable = try MachOParser.preferredArm64Slice(source)
         let redirects = try patchForLiveContainer(&executable)
+        try injectBootstrapLoadCommand(&executable,
+                                       path: "@executable_path/Frameworks/DBBootstrap.dylib")
 
         guard let pluginURL = Bundle.main.url(forResource: "DarwinBridgeLCPlugin", withExtension: "dylib") else {
             throw LoLLiveContainerPackageError.pluginMissing
@@ -47,6 +49,9 @@ struct LoLLiveContainerPackager {
         var zip = StoreZipWriter()
         try zip.add(path: "Payload/LeagueOfLegends.app/Info.plist", data: info)
         try zip.add(path: "Payload/LeagueOfLegends.app/\(executableName)", data: executable)
+        let bootstrap = try pluginWithInstallName(plugin, "@rpath/DBBootstrap.dylib")
+        try zip.add(path: "Payload/LeagueOfLegends.app/Frameworks/DBBootstrap.dylib",
+                    data: bootstrap)
 
         // Keep each redirected dependency at a distinct dylib ordinal. dyld may
         // coalesce duplicate load paths, which would shift the original Mach-O
@@ -143,6 +148,110 @@ struct LoLLiveContainerPackager {
         }
 
         return redirects
+    }
+
+    private static func injectBootstrapLoadCommand(_ data: inout Data,
+                                                   path: String) throws {
+        // Add a real LC_LOAD_DYLIB without moving any existing segment bytes.
+        // Mach-O executables normally have padding between the load-command table
+        // and the first section. We consume only verified zero padding.
+        guard data.count >= 32, try u32(data, 0) == MachOParser.mhMagic64 else {
+            throw LoLLiveContainerPackageError.malformed("bootstrap injection requires thin Mach-O 64")
+        }
+
+        let ncmds = Int(try u32(data, 16))
+        let sizeofcmds = Int(try u32(data, 20))
+        let commandsEnd = 32 + sizeofcmds
+        guard commandsEnd <= data.count else {
+            throw LoLLiveContainerPackageError.malformed("load command table exceeds file during bootstrap injection")
+        }
+
+        var cursor = 32
+        var firstFileData = data.count
+        for _ in 0..<ncmds {
+            guard cursor + 8 <= commandsEnd else {
+                throw LoLLiveContainerPackageError.malformed("truncated load command during bootstrap injection")
+            }
+            let cmd = try u32(data, cursor)
+            let cmdsize = Int(try u32(data, cursor + 4))
+            guard cmdsize >= 8, cursor + cmdsize <= commandsEnd else {
+                throw LoLLiveContainerPackageError.malformed("invalid load command during bootstrap injection")
+            }
+            if cmd == 0x19, cmdsize >= 72 { // LC_SEGMENT_64
+                let fileoff = try u64(data, cursor + 40)
+                let filesize = try u64(data, cursor + 48)
+                if filesize > 0, fileoff > 0, fileoff <= UInt64(Int.max) {
+                    firstFileData = min(firstFileData, Int(fileoff))
+                }
+                let nsects = Int(try u32(data, cursor + 64))
+                var section = cursor + 72
+                for _ in 0..<nsects {
+                    guard section + 80 <= cursor + cmdsize else { break }
+                    let offset = Int(try u32(data, section + 48))
+                    let size = try u64(data, section + 40)
+                    if size > 0, offset > 0 {
+                        firstFileData = min(firstFileData, offset)
+                    }
+                    section += 80
+                }
+            }
+            cursor += cmdsize
+        }
+
+        let nameBytes = Array(path.utf8) + [0]
+        let rawSize = 24 + nameBytes.count
+        let cmdsize = (rawSize + 7) & ~7
+        guard commandsEnd + cmdsize <= firstFileData,
+              commandsEnd + cmdsize <= data.count else {
+            throw LoLLiveContainerPackageError.malformed(
+                "not enough Mach-O header padding for forced bootstrap LC_LOAD_DYLIB"
+            )
+        }
+
+        // Never overwrite meaningful bytes in header padding.
+        guard data[commandsEnd..<(commandsEnd + cmdsize)].allSatisfy({ $0 == 0 }) else {
+            throw LoLLiveContainerPackageError.malformed(
+                "bootstrap load-command padding is not empty"
+            )
+        }
+
+        put32(&data, commandsEnd, lcLoadDylib)
+        put32(&data, commandsEnd + 4, UInt32(cmdsize))
+        put32(&data, commandsEnd + 8, 24) // dylib.name offset
+        put32(&data, commandsEnd + 12, 0) // timestamp
+        put32(&data, commandsEnd + 16, 0) // current_version
+        put32(&data, commandsEnd + 20, 0) // compatibility_version
+        for (index, byte) in nameBytes.enumerated() {
+            data[commandsEnd + 24 + index] = byte
+        }
+        for index in (commandsEnd + rawSize)..<(commandsEnd + cmdsize) {
+            data[index] = 0
+        }
+
+        put32(&data, 16, UInt32(ncmds + 1))
+        put32(&data, 20, UInt32(sizeofcmds + cmdsize))
+
+        // Verify our own mutation before producing the IPA.
+        var verifyCursor = 32
+        var found = false
+        for _ in 0..<(ncmds + 1) {
+            let cmd = try u32(data, verifyCursor)
+            let size = Int(try u32(data, verifyCursor + 4))
+            guard size >= 8, verifyCursor + size <= 32 + sizeofcmds + cmdsize else {
+                throw LoLLiveContainerPackageError.malformed("bootstrap verification found invalid load command")
+            }
+            if cmd == lcLoadDylib, size >= 24 {
+                let off = Int(try u32(data, verifyCursor + 8))
+                if off >= 8, off < size,
+                   cString(data, verifyCursor + off, verifyCursor + size) == path {
+                    found = true
+                }
+            }
+            verifyCursor += size
+        }
+        guard found else {
+            throw LoLLiveContainerPackageError.malformed("forced bootstrap LC_LOAD_DYLIB verification failed")
+        }
     }
 
     private static func dependencyRedirect(for path: String) -> DependencyRedirect? {
