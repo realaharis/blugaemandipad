@@ -68,7 +68,7 @@ static void DBShowRuntimeStatus(NSString *phase) {
             const NSInteger tag = 0xDB21C;
             UILabel *label = (UILabel *)[host viewWithTag:tag];
             if (![label isKindOfClass:UILabel.class]) {
-                label = [[UILabel alloc] initWithFrame:CGRectZero];
+                label = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 0, 0)];
                 label.tag = tag;
                 label.numberOfLines = 2;
                 label.textAlignment = NSTextAlignmentCenter;
