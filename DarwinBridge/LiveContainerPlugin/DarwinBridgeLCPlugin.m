@@ -7,9 +7,42 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
+#include <stdlib.h>
 
 static NSString * const DBPluginLogPrefix = @"[DarwinBridgeLC]";
 static int DBRuntimeLogFD = -1;
+static volatile int DBBackgroundHeartbeatStarted = 0;
+
+static void *DBBackgroundHeartbeatMain(void *unused) {
+    (void)unused;
+    const int checkpoints[] = {1, 3, 10, 30, 60, 120, 180};
+    int elapsed = 0;
+    for (unsigned i = 0; i < sizeof(checkpoints) / sizeof(checkpoints[0]); i++) {
+        int target = checkpoints[i];
+        sleep((unsigned)(target - elapsed));
+        elapsed = target;
+        char line[128];
+        snprintf(line, sizeof(line), "[DarwinBridgeLC] background-heartbeat +%ds\n", target);
+        DBWriteRaw(line);
+    }
+    return NULL;
+}
+
+static void DBStartBackgroundHeartbeat(void) {
+    if (__sync_lock_test_and_set(&DBBackgroundHeartbeatStarted, 1)) return;
+    pthread_t thread;
+    if (pthread_create(&thread, NULL, DBBackgroundHeartbeatMain, NULL) == 0) {
+        pthread_detach(thread);
+        DBWriteRaw("[DarwinBridgeLC] background-heartbeat-thread=started\n");
+    } else {
+        DBWriteRaw("[DarwinBridgeLC] background-heartbeat-thread=failed\n");
+    }
+}
+
+static void DBNormalExitMarker(void) {
+    DBWriteRaw("\n=== DARWINBRIDGE NORMAL EXIT ===\n");
+}
 
 static void DBWriteRaw(const char *text) {
     if (!text || DBRuntimeLogFD < 0) return;
@@ -133,6 +166,8 @@ static void DBInstallCrashDiagnostics(void) {
         NSString *path = [documents stringByAppendingPathComponent:@"DarwinBridge-runtime.log"];
         DBRuntimeLogFD = open(path.fileSystemRepresentation, O_CREAT | O_WRONLY | O_APPEND, 0644);
         if (DBRuntimeLogFD >= 0) DBWriteRaw("\n=== DARWINBRIDGE RUN BEGIN ===\n");
+        DBStartBackgroundHeartbeat();
+        atexit(DBNormalExitMarker);
         NSSetUncaughtExceptionHandler(DBUncaughtExceptionHandler);
         signal(SIGABRT, DBFatalSignalHandler);
         signal(SIGSEGV, DBFatalSignalHandler);
