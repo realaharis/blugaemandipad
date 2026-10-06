@@ -840,11 +840,11 @@ int __NSConstantStringClassReference[24] = {0};
     __attribute__((visibility("default"), used)) \
     const CFStringRef sym = CFSTR(value)
 
-DB_CFLOCALESTR(kCFAllocatorDefault, "kCFAllocatorDefault");
+__attribute__((visibility("default"), used))
+const CFAllocatorRef kCFAllocatorDefault = NULL;
 DB_CFLOCALESTR(kCFLocaleIdentifier, "kCFLocaleIdentifierKey");
 DB_CFLOCALESTR(kCFLocaleLanguageCode, "kCFLocaleLanguageCodeKey");
 DB_CFLOCALESTR(kCFLocaleScriptCode, "kCFLocaleScriptCodeKey");
-DB_CFLOCALESTR(kCFLocaleCountryCode, "kCFLocaleCountryCodeKey");
 DB_CFLOCALESTR(kCFLocaleVariantCode, "kCFLocaleVariantCodeKey");
 DB_CFLOCALESTR(kCFLocaleExemplarCharacterSet, "kCFLocaleExemplarCharacterSetKey");
 DB_CFLOCALESTR(kCFLocaleCalendarIdentifier, "calendar");
