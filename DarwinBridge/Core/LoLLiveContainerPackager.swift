@@ -254,6 +254,8 @@ struct LoLLiveContainerPackager {
             "CFBundleShortVersionString": "1.0",
             "CFBundleVersion": "1",
             "LSRequiresIPhoneOS": true,
+            "UIFileSharingEnabled": true,
+            "LSSupportsOpeningDocumentsInPlace": true,
             "MinimumOSVersion": "17.0",
             "UIDeviceFamily": [1, 2],
             "UIRequiredDeviceCapabilities": ["arm64"],
