@@ -833,6 +833,37 @@ void *__CFConstantStringClassReferencePtr = NULL;
 __attribute__((visibility("default"), used))
 int __NSConstantStringClassReference[24] = {0};
 
+
+// CoreFoundation locale constants commonly bound through the desktop
+// CoreFoundation ordinal.
+#define DB_CFLOCALESTR(sym, value) \
+    __attribute__((visibility("default"), used)) \
+    const CFStringRef sym = CFSTR(value)
+
+DB_CFLOCALESTR(kCFAllocatorDefault, "kCFAllocatorDefault");
+DB_CFLOCALESTR(kCFLocaleIdentifier, "kCFLocaleIdentifierKey");
+DB_CFLOCALESTR(kCFLocaleLanguageCode, "kCFLocaleLanguageCodeKey");
+DB_CFLOCALESTR(kCFLocaleScriptCode, "kCFLocaleScriptCodeKey");
+DB_CFLOCALESTR(kCFLocaleCountryCode, "kCFLocaleCountryCodeKey");
+DB_CFLOCALESTR(kCFLocaleVariantCode, "kCFLocaleVariantCodeKey");
+DB_CFLOCALESTR(kCFLocaleExemplarCharacterSet, "kCFLocaleExemplarCharacterSetKey");
+DB_CFLOCALESTR(kCFLocaleCalendarIdentifier, "calendar");
+DB_CFLOCALESTR(kCFLocaleCalendar, "kCFLocaleCalendarKey");
+DB_CFLOCALESTR(kCFLocaleCollationIdentifier, "collation");
+DB_CFLOCALESTR(kCFLocaleUsesMetricSystem, "kCFLocaleUsesMetricSystemKey");
+DB_CFLOCALESTR(kCFLocaleMeasurementSystem, "kCFLocaleMeasurementSystemKey");
+DB_CFLOCALESTR(kCFLocaleDecimalSeparator, "kCFLocaleDecimalSeparatorKey");
+DB_CFLOCALESTR(kCFLocaleGroupingSeparator, "kCFLocaleGroupingSeparatorKey");
+DB_CFLOCALESTR(kCFLocaleCurrencySymbol, "kCFLocaleCurrencySymbolKey");
+DB_CFLOCALESTR(kCFLocaleCurrencyCode, "currency");
+DB_CFLOCALESTR(kCFLocaleCollatorIdentifier, "kCFLocaleCollatorIdentifierKey");
+DB_CFLOCALESTR(kCFLocaleQuotationBeginDelimiterKey, "kCFLocaleQuotationBeginDelimiterKey");
+DB_CFLOCALESTR(kCFLocaleQuotationEndDelimiterKey, "kCFLocaleQuotationEndDelimiterKey");
+DB_CFLOCALESTR(kCFLocaleAlternateQuotationBeginDelimiterKey, "kCFLocaleAlternateQuotationBeginDelimiterKey");
+DB_CFLOCALESTR(kCFLocaleAlternateQuotationEndDelimiterKey, "kCFLocaleAlternateQuotationEndDelimiterKey");
+
+#undef DB_CFLOCALESTR
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
