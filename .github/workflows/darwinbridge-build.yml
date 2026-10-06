@@ -71,6 +71,9 @@ jobs:
           grep -q " _kSecMatchTrustedOnly$" build/livecontainer-plugin/exports.txt
           grep -q " _kCFStreamErrorDomainNetDB$" build/livecontainer-plugin/exports.txt
           grep -q " _OBJC_CLASS_\\$_NSAppleEventManager$" build/livecontainer-plugin/exports.txt
+          grep -q " _OBJC_CLASS_\\$_NSCharacterSet$" build/livecontainer-plugin/exports.txt
+          grep -q " _OBJC_CLASS_\\$_NSAutoreleasePool$" build/livecontainer-plugin/exports.txt
+          grep -q " _OBJC_CLASS_\\$_NSUserDefaults$" build/livecontainer-plugin/exports.txt
 
       - name: Build unsigned IPA
         working-directory: DarwinBridge
