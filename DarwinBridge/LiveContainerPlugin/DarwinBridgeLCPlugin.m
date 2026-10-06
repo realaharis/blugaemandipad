@@ -481,6 +481,16 @@ DB_FNDSTR(NSStreamNetworkServiceTypeCallSignaling, "NSStreamNetworkServiceTypeCa
 
 #undef DB_FNDSTR
 
+
+// macOS Foundation exports the NSGeometry zero constants as data symbols.
+// iOS uses the CoreGraphics geometry ABI, which is layout-compatible on arm64.
+__attribute__((visibility("default"), used, weak))
+const CGPoint NSZeroPoint = {0.0, 0.0};
+__attribute__((visibility("default"), used, weak))
+const CGSize NSZeroSize = {0.0, 0.0};
+__attribute__((visibility("default"), used, weak))
+const CGRect NSZeroRect = {{0.0, 0.0}, {0.0, 0.0}};
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
