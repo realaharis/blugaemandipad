@@ -86,6 +86,9 @@ jobs:
             artifacts/loader-audit/final/Payload/LeagueOfLegends.app/LeagueOfLegends \
             artifacts/loader-audit/livecontainer
 
+      - name: Execute full compatibility runtime in iOS simulator
+        run: python3 DarwinBridge/Tools/run_ios_probe.py
+
       - name: Build unsigned IPA
         working-directory: DarwinBridge
         run: ./build.sh

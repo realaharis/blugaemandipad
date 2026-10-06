@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Independent final-byte audit; stdlib only, runs on Linux and macOS."""
-import argparse, hashlib, json, struct
+import argparse, hashlib, json, struct, uuid
 from pathlib import Path
 
 DYLIBS = {0xC, 0x80000018, 0x8000001F, 0x80000023}
@@ -152,7 +152,10 @@ class MachO:
             result.append(dict(hash=algorithm,pages=ncode,bad_pages=bad))
         return dict(present=True,valid=bool(result) and all(not x['bad_pages'] for x in result),directories=result)
     def report(self):
-        return dict(sha256=sha(self.data),bytes=len(self.data),cpu=hex(self.u32(4)),filetype=self.u32(12),
+        ids=[str(uuid.UUID(bytes=self.data[o+8:o+24])) for c,o,n in self.commands if c==0x1b]
+        platforms=[dict(platform=self.u32(o+8),minos=hex(self.u32(o+12)),sdk=hex(self.u32(o+16))) for c,o,n in self.commands if c==0x32]
+        entries=[hex(self.u64(o+8)) for c,o,n in self.commands if c==0x80000028]
+        return dict(sha256=sha(self.data),bytes=len(self.data),uuid=ids,platforms=platforms,lc_main=entries,cpu=hex(self.u32(4)),filetype=self.u32(12),
                     command_end=self.end,header_slack=min((r[0] for r in self.regions),default=len(self.data))-self.end,
                     dependencies=self.dependencies,initializers=[hex(v) for v in self.initializers()],
                     abi_violations=self.abi_violations(),signature=self.code_pages(),

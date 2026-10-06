@@ -115,7 +115,7 @@ static void DBShowRuntimeStatus(NSString *phase) {
             }
             CGFloat width = MIN(MAX(host.bounds.size.width - 32.0, 260.0), 560.0);
             label.frame = CGRectMake((host.bounds.size.width - width) * 0.5, 24.0, width, 54.0);
-            label.text = [NSString stringWithFormat:@"DarwinBridge 21X-C\n%@", phase ?: @"unknown"];
+            label.text = [NSString stringWithFormat:@"DarwinBridge 21G\n%@", phase ?: @"unknown"];
         }
     });
 }

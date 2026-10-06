@@ -4,11 +4,13 @@ enum LoLLiveContainerPackageError: Error, LocalizedError {
     case malformed(String)
     case pluginMissing
     case unsupportedDependency(String)
+    case missingPayloadDependency(String)
 
     var errorDescription: String? {
         switch self {
         case .malformed(let message): return "LoL package error: \(message)"
         case .pluginMissing: return "DarwinBridgeLCPlugin.dylib is not embedded in this DarwinBridge build."
+        case .missingPayloadDependency(let path): return "Minimal package cannot include this required payload dependency: \(path). Importing one executable is not a complete app bundle."
         case .unsupportedDependency(let path): return "Dependency path is too short to redirect safely: \(path)"
         }
     }
@@ -36,6 +38,10 @@ struct LoLLiveContainerPackager {
                                 runtimeDirectory: URL? = nil,
                                 outputURL: URL? = nil) throws -> LoLLiveContainerPackageResult {
         var executable = try MachOParser.preferredArm64Slice(source)
+        let image = try MachOParser.parse(executable)
+        guard image.isArm64, image.fileType == 2, !image.encrypted else {
+            throw LoLLiveContainerPackageError.malformed("expected an unencrypted ARM64 executable")
+        }
         try removeCodeSignatureCommand(&executable)
         let redirects = try patchForLiveContainer(&executable)
         try injectBootstrapLoadCommand(&executable,
@@ -145,6 +151,10 @@ struct LoLLiveContainerPackager {
                         put32(&data, cursor + 20, version(1, 0, 0))
                     }
                     redirects.append(redirect)
+                } else if current.hasPrefix("@") || current.contains("/Versions/") {
+                    // An executable-only package must not pretend to include the
+                    // Riot framework/resource graph or desktop-only frameworks.
+                    throw LoLLiveContainerPackageError.missingPayloadDependency(current)
                 }
             }
 

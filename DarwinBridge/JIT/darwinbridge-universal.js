@@ -171,8 +171,11 @@ try {
             if(label==='dyld:image-notification') {
                 images();
                 // One instruction step is owned and intentional; do not alter PC.
+                const stepThread=tid, stepPC=pc;
                 const step=send_command(`vCont;s:${tid}`);
                 if(!/^T05/i.test(step || '')) { event('unexpected-step',String(step)); throw new Error('dyld notification step failed'); }
+                frame(step);
+                if(tid!==stepThread || pc===stepPC) throw new Error('unexpected thread/PC at notification step');
                 arm(notification,label);
             } else { observed.add(label); snapshot(); }
             next='vCont;c'; continue;

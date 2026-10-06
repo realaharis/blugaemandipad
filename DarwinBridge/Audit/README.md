@@ -74,6 +74,15 @@ CI compiles the exact pinned upstream `LCPatchExecSlice` plus its helpers and ru
 it on the final fixture binary, then checks ordinals, sections, LC_MAIN and re-signs.
 This establishes behavior for the pinned source only, not the installed build.
 
+## iOS runtime execution test
+
+`run_ios_probe.py` builds the full compatibility source for the available iOS
+simulator, installs a native UIKit probe and loads the forwarding dylibs. The test
+requires native NSObject/NSString pointer identity through three distinct aliases,
+one shared implementation address, both bootstrap and plugin constructor log
+markers, and successful UIApplicationMain startup. Its logs and simulator/runtime
+identity are uploaded with the audit. This is simulator execution, not iPad proof.
+
 ## Final artifact validation and limits
 
 The same Swift packager used by the app is invoked on a real compiled ARM64 macOS
@@ -88,7 +97,8 @@ identities must remain undefined imports. The fixture is **not the Riot client**
 The pinned official Riot game binary is separately downloaded and inspected. The
 minimal executable-only package omits RiotGamesApi/RPatch/mvg and full resources;
 LDAP/OpenGL/ApplicationServices also require a real port. That full game is not an
-approved candidate. The previous 514-import file cannot be assumed identical to
+approved candidate. The minimal packager now refuses unresolved relative payload
+dependencies or unconverted desktop framework paths instead of emitting a broken IPA. The previous 514-import file cannot be assumed identical to
 this release. A manifest's combined fat-architecture import count is not evidence
 that every ARM64 import is covered.
 

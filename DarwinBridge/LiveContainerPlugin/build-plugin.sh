@@ -1,11 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="$ROOT/build/livecontainer-plugin"
+OUT="${DB_RUNTIME_OUT:-$ROOT/build/livecontainer-plugin}"
 mkdir -p "$OUT"
-SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
-CLANG="$(xcrun --sdk iphoneos --find clang)"
-COMMON=(-target arm64-apple-ios17.0 -isysroot "$SDK" -dynamiclib -current_version 1.0 -compatibility_version 1.0 -Wl,-headerpad,0x400)
+SDK_NAME="${DB_RUNTIME_SDK:-iphoneos}"
+SDK="$(xcrun --sdk "$SDK_NAME" --show-sdk-path)"
+CLANG="$(xcrun --sdk "$SDK_NAME" --find clang)"
+COMMON=(-target "${DB_RUNTIME_TARGET:-arm64-apple-ios17.0}" -isysroot "$SDK" -dynamiclib -current_version 1.0 -compatibility_version 1.0 -Wl,-headerpad,0x400)
 "$CLANG" "${COMMON[@]}" "$ROOT/LiveContainerPlugin/DBBootstrap.c" \
   -install_name @loader_path/DBBootstrap.dylib -o "$OUT/DBBootstrap.dylib"
 # LC_LOAD_DYLIB is NOT a re-export. These LC_REEXPORT_DYLIB commands preserve
