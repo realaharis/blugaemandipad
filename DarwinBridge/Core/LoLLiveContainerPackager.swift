@@ -393,6 +393,15 @@ struct LoLLiveContainerPackager {
         }
     }
 
+    private static func u64(_ data: Data, _ offset: Int) throws -> UInt64 {
+        guard offset + 8 <= data.count else {
+            throw LoLLiveContainerPackageError.malformed("read past EOF")
+        }
+        return data[offset..<offset+8].enumerated().reduce(UInt64(0)) {
+            $0 | (UInt64($1.element) << UInt64($1.offset * 8))
+        }
+    }
+
     private static func put32(_ data: inout Data, _ offset: Int, _ value: UInt32) {
         for i in 0..<4 {
             data[offset + i] = UInt8((value >> UInt32(i * 8)) & 0xff)
