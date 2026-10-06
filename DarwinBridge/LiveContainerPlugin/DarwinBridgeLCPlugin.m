@@ -12,6 +12,7 @@
 
 static NSString * const DBPluginLogPrefix = @"[DarwinBridgeLC]";
 static int DBRuntimeLogFD = -1;
+static void DBWriteRaw(const char *text);
 static volatile int DBBackgroundHeartbeatStarted = 0;
 
 static void *DBBackgroundHeartbeatMain(void *unused) {
