@@ -3,11 +3,66 @@
 #import <CFNetwork/CFNetwork.h>
 #import <Security/Security.h>
 #import <objc/runtime.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
 
 static NSString * const DBPluginLogPrefix = @"[DarwinBridgeLC]";
+static int DBRuntimeLogFD = -1;
+
+static void DBWriteRaw(const char *text) {
+    if (!text || DBRuntimeLogFD < 0) return;
+    write(DBRuntimeLogFD, text, strlen(text));
+    fsync(DBRuntimeLogFD);
+}
 
 static void DBLog(NSString *message) {
     NSLog(@"%@ %@", DBPluginLogPrefix, message);
+    if (DBRuntimeLogFD >= 0 && message) {
+        NSString *line = [NSString stringWithFormat:@"%@ %@\n", DBPluginLogPrefix, message];
+        const char *utf8 = line.UTF8String;
+        if (utf8) DBWriteRaw(utf8);
+    }
+}
+
+static void DBFatalSignalHandler(int sig) {
+    const char *name = "SIGNAL";
+    if (sig == SIGABRT) name = "SIGABRT";
+    else if (sig == SIGSEGV) name = "SIGSEGV";
+    else if (sig == SIGBUS) name = "SIGBUS";
+    else if (sig == SIGILL) name = "SIGILL";
+    else if (sig == SIGFPE) name = "SIGFPE";
+    else if (sig == SIGTRAP) name = "SIGTRAP";
+    DBWriteRaw("\n=== DARWINBRIDGE FATAL ===\n");
+    DBWriteRaw(name);
+    DBWriteRaw("\n");
+    signal(sig, SIG_DFL);
+    kill(getpid(), sig);
+}
+
+static void DBUncaughtExceptionHandler(NSException *exception) {
+    DBWriteRaw("\n=== DARWINBRIDGE OBJC EXCEPTION ===\n");
+    DBLog([NSString stringWithFormat:@"name=%@ reason=%@", exception.name, exception.reason]);
+    for (NSString *line in exception.callStackSymbols) DBLog(line);
+}
+
+static void DBInstallCrashDiagnostics(void) {
+    @autoreleasepool {
+        NSString *documents = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+        if (!documents.length) documents = NSTemporaryDirectory();
+        NSString *path = [documents stringByAppendingPathComponent:@"DarwinBridge-runtime.log"];
+        DBRuntimeLogFD = open(path.fileSystemRepresentation, O_CREAT | O_WRONLY | O_APPEND, 0644);
+        if (DBRuntimeLogFD >= 0) DBWriteRaw("\n=== DARWINBRIDGE RUN BEGIN ===\n");
+        NSSetUncaughtExceptionHandler(DBUncaughtExceptionHandler);
+        signal(SIGABRT, DBFatalSignalHandler);
+        signal(SIGSEGV, DBFatalSignalHandler);
+        signal(SIGBUS, DBFatalSignalHandler);
+        signal(SIGILL, DBFatalSignalHandler);
+        signal(SIGFPE, DBFatalSignalHandler);
+        signal(SIGTRAP, DBFatalSignalHandler);
+        DBLog([NSString stringWithFormat:@"persistent log=%@", path]);
+    }
 }
 
 @interface DBCompatObject : NSObject
@@ -906,6 +961,9 @@ const char *DBDarwinBridgePluginVersion(void) {
 
 __attribute__((constructor))
 static void DBDarwinBridgePluginInit(void) {
+    DBInstallCrashDiagnostics();
+    DBLog(@"checkpoint=plugin-constructor-begin");
+    DBLog(@"checkpoint=cf-singletons-begin");
     DB_kCFBooleanTrue = (__bridge CFBooleanRef)@YES;
     DB_kCFBooleanFalse = (__bridge CFBooleanRef)@NO;
     DB_kCFNull = (__bridge CFNullRef)[NSNull null];
@@ -936,6 +994,7 @@ static void DBDarwinBridgePluginInit(void) {
     if (httpResponseClass == Nil) {
         httpResponseClass = DBNSHTTPURLResponseShim.class;
     }
+    DBLog(@"checkpoint=objc-export-bindings-begin");
     DBExportedNSHTTPURLResponse = httpResponseClass;
     DBExportedNSCharacterSet = objc_getClass("NSCharacterSet");
     DBExportedNSMutableCharacterSet = objc_getClass("NSMutableCharacterSet");
@@ -1017,6 +1076,7 @@ static void DBDarwinBridgePluginInit(void) {
 
     NSApp = [NSApplication sharedApplication];
     DBLog(@"compatibility plugin loaded");
+    DBLog(@"checkpoint=plugin-constructor-complete");
     DBLog([NSString stringWithFormat:@"UIKit=%@ MetalClassProbe=%@",
            NSStringFromClass(UIApplication.class),
            NSClassFromString(@"MTLDevice") ? @"yes" : @"no"]);
