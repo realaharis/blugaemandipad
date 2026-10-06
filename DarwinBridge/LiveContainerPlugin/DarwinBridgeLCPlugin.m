@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <CFNetwork/CFNetwork.h>
+#import <Security/Security.h>
 #import <objc/runtime.h>
 
 static NSString * const DBPluginLogPrefix = @"[DarwinBridgeLC]";
@@ -226,6 +227,50 @@ __attribute__((visibility("default"), used))
 const CFStringRef DB_kCFStreamSSLPeerName __asm__("_kCFStreamSSLPeerName") = CFSTR("kCFStreamSSLPeerName");
 __attribute__((visibility("default"), used))
 const CFStringRef DB_kCFStreamSSLValidatesCertificateChain __asm__("_kCFStreamSSLValidatesCertificateChain") = CFSTR("kCFStreamSSLValidatesCertificateChain");
+
+
+// Security.framework compatibility globals.  Keep the historical wire values
+// used by SecItem dictionaries so macOS-linked clients can bind through the
+// DBSecurity ordinal without depending on where modern iOS exports them.
+#define DB_SECSTR(sym, value) \
+    __attribute__((visibility("default"), used)) \
+    const CFStringRef DB_##sym __asm__("_" #sym) = CFSTR(value)
+
+DB_SECSTR(kSecClass, "class");
+DB_SECSTR(kSecClassCertificate, "cert");
+DB_SECSTR(kSecClassGenericPassword, "genp");
+DB_SECSTR(kSecClassIdentity, "idnt");
+DB_SECSTR(kSecClassInternetPassword, "inet");
+DB_SECSTR(kSecClassKey, "keys");
+
+DB_SECSTR(kSecAttrAccount, "acct");
+DB_SECSTR(kSecAttrService, "svce");
+DB_SECSTR(kSecAttrAccessGroup, "agrp");
+DB_SECSTR(kSecAttrLabel, "labl");
+DB_SECSTR(kSecAttrDescription, "desc");
+DB_SECSTR(kSecAttrComment, "icmt");
+DB_SECSTR(kSecAttrCreator, "crtr");
+DB_SECSTR(kSecAttrType, "type");
+DB_SECSTR(kSecAttrCreationDate, "cdat");
+DB_SECSTR(kSecAttrModificationDate, "mdat");
+DB_SECSTR(kSecAttrGeneric, "gena");
+DB_SECSTR(kSecAttrSynchronizable, "sync");
+DB_SECSTR(kSecAttrSynchronizableAny, "syna");
+
+DB_SECSTR(kSecMatchLimit, "m_Limit");
+DB_SECSTR(kSecMatchLimitAll, "m_LimitAll");
+DB_SECSTR(kSecMatchLimitOne, "m_LimitOne");
+
+DB_SECSTR(kSecReturnData, "r_Data");
+DB_SECSTR(kSecReturnAttributes, "r_Attributes");
+DB_SECSTR(kSecReturnPersistentRef, "r_PersistentRef");
+DB_SECSTR(kSecReturnRef, "r_Ref");
+
+DB_SECSTR(kSecValueData, "v_Data");
+DB_SECSTR(kSecValueRef, "v_Ref");
+DB_SECSTR(kSecValuePersistentRef, "v_PersistentRef");
+
+#undef DB_SECSTR
 
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
