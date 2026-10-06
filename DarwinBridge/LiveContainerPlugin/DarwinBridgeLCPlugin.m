@@ -440,166 +440,9 @@ static volatile BOOL DBNSApplicationShouldRun = YES;
 @end
 
 
-// Mach-O clients bind Objective-C classes by the exported symbol
-// _OBJC_CLASS_$_ClassName. Runtime registration alone is too late for dyld's
-// non-flat ordinal bind, so export an actual data symbol from the compatibility
-// dylib. The value is populated by the plugin constructor.
-__attribute__((visibility("default"), used))
-Class DBExportedNSHTTPURLResponse __asm__("_OBJC_CLASS_$_NSHTTPURLResponse") = Nil;
-
-__attribute__((visibility("default"), used))
-__attribute__((visibility("default"), used))
-Class DBExportedNSCharacterSet __asm__("_OBJC_CLASS_$_NSCharacterSet") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSMutableCharacterSet __asm__("_OBJC_CLASS_$_NSMutableCharacterSet") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSScanner __asm__("_OBJC_CLASS_$_NSScanner") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSLocale __asm__("_OBJC_CLASS_$_NSLocale") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSTimeZone __asm__("_OBJC_CLASS_$_NSTimeZone") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSCalendar __asm__("_OBJC_CLASS_$_NSCalendar") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSUUID __asm__("_OBJC_CLASS_$_NSUUID") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSIndexSet __asm__("_OBJC_CLASS_$_NSIndexSet") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSMutableIndexSet __asm__("_OBJC_CLASS_$_NSMutableIndexSet") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSSet __asm__("_OBJC_CLASS_$_NSSet") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSMutableSet __asm__("_OBJC_CLASS_$_NSMutableSet") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSOrderedSet __asm__("_OBJC_CLASS_$_NSOrderedSet") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSMutableOrderedSet __asm__("_OBJC_CLASS_$_NSMutableOrderedSet") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSNull __asm__("_OBJC_CLASS_$_NSNull") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSRegularExpression __asm__("_OBJC_CLASS_$_NSRegularExpression") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSPredicate __asm__("_OBJC_CLASS_$_NSPredicate") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSSortDescriptor __asm__("_OBJC_CLASS_$_NSSortDescriptor") = Nil;
-Class DBExportedNSAutoreleasePool __asm__("_OBJC_CLASS_$_NSAutoreleasePool") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSObject __asm__("_OBJC_CLASS_$_NSObject") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSException __asm__("_OBJC_CLASS_$_NSException") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSRunLoop __asm__("_OBJC_CLASS_$_NSRunLoop") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSThread __asm__("_OBJC_CLASS_$_NSThread") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSTimer __asm__("_OBJC_CLASS_$_NSTimer") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSDate __asm__("_OBJC_CLASS_$_NSDate") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSValue __asm__("_OBJC_CLASS_$_NSValue") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSNumber __asm__("_OBJC_CLASS_$_NSNumber") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSMutableArray __asm__("_OBJC_CLASS_$_NSMutableArray") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSMutableDictionary __asm__("_OBJC_CLASS_$_NSMutableDictionary") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSMutableData __asm__("_OBJC_CLASS_$_NSMutableData") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSMutableString __asm__("_OBJC_CLASS_$_NSMutableString") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSPipe __asm__("_OBJC_CLASS_$_NSPipe") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSFileHandle __asm__("_OBJC_CLASS_$_NSFileHandle") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSOperation __asm__("_OBJC_CLASS_$_NSOperation") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSOperationQueue __asm__("_OBJC_CLASS_$_NSOperationQueue") = Nil;
-Class DBExportedNSUserDefaults __asm__("_OBJC_CLASS_$_NSUserDefaults") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSNotificationCenter __asm__("_OBJC_CLASS_$_NSNotificationCenter") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSProcessInfo __asm__("_OBJC_CLASS_$_NSProcessInfo") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSFileManager __asm__("_OBJC_CLASS_$_NSFileManager") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSBundle __asm__("_OBJC_CLASS_$_NSBundle") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURL __asm__("_OBJC_CLASS_$_NSURL") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSData __asm__("_OBJC_CLASS_$_NSData") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSString __asm__("_OBJC_CLASS_$_NSString") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSArray __asm__("_OBJC_CLASS_$_NSArray") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSDictionary __asm__("_OBJC_CLASS_$_NSDictionary") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSError __asm__("_OBJC_CLASS_$_NSError") = Nil;
-
-__attribute__((visibility("default"), used))
-Class DBExportedNSMutableURLRequest __asm__("_OBJC_CLASS_$_NSMutableURLRequest") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLRequest __asm__("_OBJC_CLASS_$_NSURLRequest") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLResponse __asm__("_OBJC_CLASS_$_NSURLResponse") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSCachedURLResponse __asm__("_OBJC_CLASS_$_NSCachedURLResponse") = Nil;
-
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLProtectionSpace __asm__("_OBJC_CLASS_$_NSURLProtectionSpace") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLCredential __asm__("_OBJC_CLASS_$_NSURLCredential") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLAuthenticationChallenge __asm__("_OBJC_CLASS_$_NSURLAuthenticationChallenge") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLCache __asm__("_OBJC_CLASS_$_NSURLCache") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSHTTPCookie __asm__("_OBJC_CLASS_$_NSHTTPCookie") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSHTTPCookieStorage __asm__("_OBJC_CLASS_$_NSHTTPCookieStorage") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLProtocol __asm__("_OBJC_CLASS_$_NSURLProtocol") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLSession __asm__("_OBJC_CLASS_$_NSURLSession") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLSessionConfiguration __asm__("_OBJC_CLASS_$_NSURLSessionConfiguration") = Nil;
-
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLConnection __asm__("_OBJC_CLASS_$_NSURLConnection") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLCredentialStorage __asm__("_OBJC_CLASS_$_NSURLCredentialStorage") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLSessionTask __asm__("_OBJC_CLASS_$_NSURLSessionTask") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLSessionDataTask __asm__("_OBJC_CLASS_$_NSURLSessionDataTask") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLSessionDownloadTask __asm__("_OBJC_CLASS_$_NSURLSessionDownloadTask") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLSessionUploadTask __asm__("_OBJC_CLASS_$_NSURLSessionUploadTask") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLSessionStreamTask __asm__("_OBJC_CLASS_$_NSURLSessionStreamTask") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLSessionWebSocketTask __asm__("_OBJC_CLASS_$_NSURLSessionWebSocketTask") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLSessionTaskMetrics __asm__("_OBJC_CLASS_$_NSURLSessionTaskMetrics") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSURLSessionTaskTransactionMetrics __asm__("_OBJC_CLASS_$_NSURLSessionTaskTransactionMetrics") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSHost __asm__("_OBJC_CLASS_$_NSHost") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSNetService __asm__("_OBJC_CLASS_$_NSNetService") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSNetServiceBrowser __asm__("_OBJC_CLASS_$_NSNetServiceBrowser") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSInputStream __asm__("_OBJC_CLASS_$_NSInputStream") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSInputStreamMeta __asm__("_OBJC_METACLASS_$_NSInputStream") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSOutputStream __asm__("_OBJC_CLASS_$_NSOutputStream") = Nil;
-__attribute__((visibility("default"), used))
-Class DBExportedNSOutputStreamMeta __asm__("_OBJC_METACLASS_$_NSOutputStream") = Nil;
-
+// Native Objective-C symbols must be re-exported by the linker. A Class
+// variable has an extra level of indirection and is NOT an objc_class object.
+// In particular it cannot be used as a superclass or a constant-string isa.
 
 // CFNetwork on macOS exposes a number of real data globals that older/native
 // clients bind by dylib ordinal.  iOS may provide them from a different image
@@ -1029,16 +872,6 @@ DB_CFSTR(kCFStreamPropertyDataWritten, "kCFStreamPropertyDataWritten");
 __attribute__((visibility("default"), used))
 const CFTimeInterval kCFAbsoluteTimeIntervalSince1970 = 978307200.0;
 
-// LP64 constant-string runtime anchors required by Clang-generated
-// CFString/NSString constant objects in macOS Mach-O clients.
-__attribute__((visibility("default"), used))
-int __CFConstantStringClassReference[24] = {0};
-__attribute__((visibility("default"), used))
-void *__CFConstantStringClassReferencePtr = NULL;
-__attribute__((visibility("default"), used))
-int __NSConstantStringClassReference[24] = {0};
-
-
 // CoreFoundation locale constants commonly bound through the desktop
 // CoreFoundation ordinal.
 #define DB_CFLOCALESTR(sym, value) \
@@ -1070,23 +903,6 @@ DB_CFLOCALESTR(kCFLocaleAlternateQuotationEndDelimiterKey, "kCFLocaleAlternateQu
 #undef DB_CFLOCALESTR
 
 
-// CoreFoundation process-lifetime object constants. Export writable backing
-// under private C identifiers so DBCoreFoundation satisfies two-level dyld
-// binds, then populate them with native Foundation/CoreFoundation objects in
-// the plugin constructor before dlopen returns to the guest.
-__attribute__((visibility("default"), used))
-CFBooleanRef DB_kCFBooleanTrue __asm__("_kCFBooleanTrue") = NULL;
-__attribute__((visibility("default"), used))
-CFBooleanRef DB_kCFBooleanFalse __asm__("_kCFBooleanFalse") = NULL;
-__attribute__((visibility("default"), used))
-CFNullRef DB_kCFNull __asm__("_kCFNull") = NULL;
-__attribute__((visibility("default"), used))
-CFNumberRef DB_kCFNumberNaN __asm__("_kCFNumberNaN") = NULL;
-__attribute__((visibility("default"), used))
-CFNumberRef DB_kCFNumberPositiveInfinity __asm__("_kCFNumberPositiveInfinity") = NULL;
-__attribute__((visibility("default"), used))
-CFNumberRef DB_kCFNumberNegativeInfinity __asm__("_kCFNumberNegativeInfinity") = NULL;
-
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
@@ -1106,124 +922,13 @@ void DBDarwinBridgeRuntimeCheckpoint(const char *phase, const char *detail) {
 }
 
 const char *DBDarwinBridgePluginVersion(void) {
-    return "0.1.0-stage20";
+    return "0.2.0-stage21G-abi";
 }
 
 __attribute__((constructor))
 static void DBDarwinBridgePluginInit(void) {
     DBInstallCrashDiagnostics();
     DBLog(@"checkpoint=plugin-constructor-begin");
-    DBLog(@"checkpoint=cf-singletons-begin");
-    DB_kCFBooleanTrue = (__bridge CFBooleanRef)@YES;
-    DB_kCFBooleanFalse = (__bridge CFBooleanRef)@NO;
-    DB_kCFNull = (__bridge CFNullRef)[NSNull null];
-    DB_kCFNumberNaN = (__bridge CFNumberRef)@(NAN);
-    DB_kCFNumberPositiveInfinity = (__bridge CFNumberRef)@(INFINITY);
-    DB_kCFNumberNegativeInfinity = (__bridge CFNumberRef)@(-INFINITY);
-    // Some macOS-linked clients bind NSHTTPURLResponse from CFNetwork while
-    // iOS exposes the class through Foundation. Register a compatibility class
-    // under the expected Objective-C runtime name only when it is absent.
-    if (objc_getClass("NSHTTPURLResponse") == Nil) {
-        Class source = DBNSHTTPURLResponseShim.class;
-        Class dynamic = objc_allocateClassPair(class_getSuperclass(source), "NSHTTPURLResponse", 0);
-        if (dynamic) {
-            unsigned int methodCount = 0;
-            Method *methods = class_copyMethodList(source, &methodCount);
-            for (unsigned int i = 0; i < methodCount; i++) {
-                class_addMethod(dynamic,
-                                method_getName(methods[i]),
-                                method_getImplementation(methods[i]),
-                                method_getTypeEncoding(methods[i]));
-            }
-            free(methods);
-            objc_registerClassPair(dynamic);
-            DBLog(@"registered NSHTTPURLResponse compatibility class");
-        }
-    }
-    Class httpResponseClass = objc_getClass("NSHTTPURLResponse");
-    if (httpResponseClass == Nil) {
-        httpResponseClass = DBNSHTTPURLResponseShim.class;
-    }
-    DBLog(@"checkpoint=objc-export-bindings-begin");
-    DBExportedNSHTTPURLResponse = httpResponseClass;
-    DBExportedNSCharacterSet = objc_getClass("NSCharacterSet");
-    DBExportedNSMutableCharacterSet = objc_getClass("NSMutableCharacterSet");
-    DBExportedNSScanner = objc_getClass("NSScanner");
-    DBExportedNSLocale = objc_getClass("NSLocale");
-    DBExportedNSTimeZone = objc_getClass("NSTimeZone");
-    DBExportedNSCalendar = objc_getClass("NSCalendar");
-    DBExportedNSUUID = objc_getClass("NSUUID");
-    DBExportedNSIndexSet = objc_getClass("NSIndexSet");
-    DBExportedNSMutableIndexSet = objc_getClass("NSMutableIndexSet");
-    DBExportedNSSet = objc_getClass("NSSet");
-    DBExportedNSMutableSet = objc_getClass("NSMutableSet");
-    DBExportedNSOrderedSet = objc_getClass("NSOrderedSet");
-    DBExportedNSMutableOrderedSet = objc_getClass("NSMutableOrderedSet");
-    DBExportedNSNull = objc_getClass("NSNull");
-    DBExportedNSRegularExpression = objc_getClass("NSRegularExpression");
-    DBExportedNSPredicate = objc_getClass("NSPredicate");
-    DBExportedNSSortDescriptor = objc_getClass("NSSortDescriptor");
-    DBExportedNSAutoreleasePool = objc_getClass("NSAutoreleasePool");
-    DBExportedNSObject = objc_getClass("NSObject");
-    DBExportedNSException = objc_getClass("NSException");
-    DBExportedNSRunLoop = objc_getClass("NSRunLoop");
-    DBExportedNSThread = objc_getClass("NSThread");
-    DBExportedNSTimer = objc_getClass("NSTimer");
-    DBExportedNSDate = objc_getClass("NSDate");
-    DBExportedNSValue = objc_getClass("NSValue");
-    DBExportedNSNumber = objc_getClass("NSNumber");
-    DBExportedNSMutableArray = objc_getClass("NSMutableArray");
-    DBExportedNSMutableDictionary = objc_getClass("NSMutableDictionary");
-    DBExportedNSMutableData = objc_getClass("NSMutableData");
-    DBExportedNSMutableString = objc_getClass("NSMutableString");
-    DBExportedNSPipe = objc_getClass("NSPipe");
-    DBExportedNSFileHandle = objc_getClass("NSFileHandle");
-    DBExportedNSOperation = objc_getClass("NSOperation");
-    DBExportedNSOperationQueue = objc_getClass("NSOperationQueue");
-    DBExportedNSUserDefaults = objc_getClass("NSUserDefaults");
-    DBExportedNSNotificationCenter = objc_getClass("NSNotificationCenter");
-    DBExportedNSProcessInfo = objc_getClass("NSProcessInfo");
-    DBExportedNSFileManager = objc_getClass("NSFileManager");
-    DBExportedNSBundle = objc_getClass("NSBundle");
-    DBExportedNSURL = objc_getClass("NSURL");
-    DBExportedNSData = objc_getClass("NSData");
-    DBExportedNSString = objc_getClass("NSString");
-    DBExportedNSArray = objc_getClass("NSArray");
-    DBExportedNSDictionary = objc_getClass("NSDictionary");
-    DBExportedNSError = objc_getClass("NSError");
-    DBExportedNSMutableURLRequest = objc_getClass("NSMutableURLRequest");
-    DBExportedNSURLRequest = objc_getClass("NSURLRequest");
-    DBExportedNSURLResponse = objc_getClass("NSURLResponse");
-    DBExportedNSCachedURLResponse = objc_getClass("NSCachedURLResponse");
-    DBExportedNSURLProtectionSpace = objc_getClass("NSURLProtectionSpace");
-    DBExportedNSURLCredential = objc_getClass("NSURLCredential");
-    DBExportedNSURLAuthenticationChallenge = objc_getClass("NSURLAuthenticationChallenge");
-    DBExportedNSURLCache = objc_getClass("NSURLCache");
-    DBExportedNSHTTPCookie = objc_getClass("NSHTTPCookie");
-    DBExportedNSHTTPCookieStorage = objc_getClass("NSHTTPCookieStorage");
-    DBExportedNSURLProtocol = objc_getClass("NSURLProtocol");
-    DBExportedNSURLSession = objc_getClass("NSURLSession");
-    DBExportedNSURLSessionConfiguration = objc_getClass("NSURLSessionConfiguration");
-    DBExportedNSURLConnection = objc_getClass("NSURLConnection");
-    DBExportedNSURLCredentialStorage = objc_getClass("NSURLCredentialStorage");
-    DBExportedNSURLSessionTask = objc_getClass("NSURLSessionTask");
-    DBExportedNSURLSessionDataTask = objc_getClass("NSURLSessionDataTask");
-    DBExportedNSURLSessionDownloadTask = objc_getClass("NSURLSessionDownloadTask");
-    DBExportedNSURLSessionUploadTask = objc_getClass("NSURLSessionUploadTask");
-    DBExportedNSURLSessionStreamTask = objc_getClass("NSURLSessionStreamTask");
-    DBExportedNSURLSessionWebSocketTask = objc_getClass("NSURLSessionWebSocketTask");
-    DBExportedNSURLSessionTaskMetrics = objc_getClass("NSURLSessionTaskMetrics");
-    DBExportedNSURLSessionTaskTransactionMetrics = objc_getClass("NSURLSessionTaskTransactionMetrics");
-    DBExportedNSHost = objc_getClass("NSHost");
-    DBExportedNSNetService = objc_getClass("NSNetService");
-    DBExportedNSNetServiceBrowser = objc_getClass("NSNetServiceBrowser");
-    DBExportedNSInputStream = objc_getClass("NSInputStream");
-    DBExportedNSInputStreamMeta = objc_getMetaClass("NSInputStream");
-    DBExportedNSOutputStream = objc_getClass("NSOutputStream");
-    DBExportedNSOutputStreamMeta = objc_getMetaClass("NSOutputStream");
-    DBLog([NSString stringWithFormat:@"exported NSHTTPURLResponse class symbol -> %@", NSStringFromClass(httpResponseClass)]);
-    DBLog(@"exported CFNetwork/Foundation URL compatibility class symbols");
-
     NSApp = [NSApplication sharedApplication];
     DBLog(@"compatibility plugin loaded");
     DBLog(@"checkpoint=plugin-constructor-complete");

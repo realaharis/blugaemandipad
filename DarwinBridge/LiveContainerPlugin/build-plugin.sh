@@ -1,17 +1,31 @@
 #!/bin/bash
 set -euo pipefail
-
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/build/livecontainer-plugin"
 mkdir -p "$OUT"
-
 SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
 CLANG="$(xcrun --sdk iphoneos --find clang)"
-
-"$CLANG"   -target arm64-apple-ios17.0   -isysroot "$SDK"   -fobjc-arc   -fblocks   -dynamiclib   "$ROOT/LiveContainerPlugin/DarwinBridgeLCPlugin.m"   -framework Foundation   -framework UIKit   -framework Metal   -install_name @rpath/DarwinBridgeLCPlugin.dylib   -o "$OUT/DarwinBridgeLCPlugin.dylib"
-
-if command -v codesign >/dev/null 2>&1; then
-  codesign --force --sign - "$OUT/DarwinBridgeLCPlugin.dylib"
-fi
-
-echo "$OUT/DarwinBridgeLCPlugin.dylib"
+COMMON=(-target arm64-apple-ios17.0 -isysroot "$SDK" -dynamiclib -current_version 1.0 -compatibility_version 1.0 -Wl,-headerpad,0x400)
+"$CLANG" "${COMMON[@]}" "$ROOT/LiveContainerPlugin/DBBootstrap.c" \
+  -install_name @loader_path/DBBootstrap.dylib -o "$OUT/DBBootstrap.dylib"
+# LC_LOAD_DYLIB is NOT a re-export. These LC_REEXPORT_DYLIB commands preserve
+# native symbol addresses, ObjC class objects, metaclasses and CFString isa.
+REEXPORTS=()
+for framework in Foundation CoreFoundation UIKit CFNetwork Security CoreGraphics CoreText AVFoundation SystemConfiguration Metal; do
+  REEXPORTS+=(-Wl,-reexport_framework,"$framework")
+done
+"$CLANG" "${COMMON[@]}" -fobjc-arc -fblocks \
+  "$ROOT/LiveContainerPlugin/DarwinBridgeLCPlugin.m" "${REEXPORTS[@]}" \
+  -Wl,-needed_library,"$OUT/DBBootstrap.dylib" \
+  -install_name @loader_path/DarwinBridgeLCPlugin.dylib -o "$OUT/DarwinBridgeLCPlugin.dylib"
+for name in AppKit CoreServices Cocoa ScriptingBridge DiskArbitration IOKit AVFoundation CFNetwork CoreFoundation CoreGraphics CoreText Foundation Security SystemConfiguration; do
+  "$CLANG" "${COMMON[@]}" "$ROOT/LiveContainerPlugin/DBForwarder.c" \
+    -Wl,-reexport_library,"$OUT/DarwinBridgeLCPlugin.dylib" \
+    -install_name "@rpath/DB${name}.dylib" -o "$OUT/DB${name}.dylib"
+done
+# Nothing mutates these binaries after this signing operation.
+for dylib in "$OUT"/*.dylib; do
+  codesign --force --sign - "$dylib"
+  codesign --verify --strict "$dylib"
+done
+echo "$OUT"

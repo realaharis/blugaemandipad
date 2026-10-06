@@ -41,6 +41,7 @@ jobs:
             -target arm64-apple-macos13.0 \
             -isysroot "$SDK" \
             -Wl,-no_pie \
+            -Wl,-needed_framework,AppKit -Wl,-needed_framework,Foundation -Wl,-needed_framework,CFNetwork \
             Tests/real_macho_return42.c \
             -o artifacts/test-target/darwinbridge-test-arm64
 
@@ -63,22 +64,21 @@ jobs:
         working-directory: DarwinBridge
         run: chmod +x LiveContainerPlugin/build-plugin.sh && LiveContainerPlugin/build-plugin.sh
 
-      - name: Verify compatibility exports
-        working-directory: DarwinBridge
+      - name: Audit runtime binaries and native ObjC identity
         run: |
-          nm -gU build/livecontainer-plugin/DarwinBridgeLCPlugin.dylib > build/livecontainer-plugin/exports.txt
-          grep -q " _kSecClass$" build/livecontainer-plugin/exports.txt
-          grep -q " _kSecMatchTrustedOnly$" build/livecontainer-plugin/exports.txt
-          grep -q " _kCFStreamErrorDomainNetDB$" build/livecontainer-plugin/exports.txt
-          grep -q " _OBJC_CLASS_\\$_NSAppleEventManager$" build/livecontainer-plugin/exports.txt
-          grep -q " _OBJC_CLASS_\\$_NSCharacterSet$" build/livecontainer-plugin/exports.txt
-          grep -q " _OBJC_CLASS_\\$_NSAutoreleasePool$" build/livecontainer-plugin/exports.txt
-          grep -q " _OBJC_CLASS_\\$_NSUserDefaults$" build/livecontainer-plugin/exports.txt
-          grep -q " _NSFontAttributeName$" build/livecontainer-plugin/exports.txt
-          grep -q " _NSForegroundColorAttributeName$" build/livecontainer-plugin/exports.txt
-          grep -q " _NSParagraphStyleAttributeName$" build/livecontainer-plugin/exports.txt
-          grep -q " ___CFConstantStringClassReference$" build/livecontainer-plugin/exports.txt
-          grep -q " ___NSConstantStringClassReference$" build/livecontainer-plugin/exports.txt
+          python3 DarwinBridge/Tools/audit_runtime.py DarwinBridge/build/livecontainer-plugin artifacts/loader-audit/runtime
+          python3 DarwinBridge/Tests/objc_loader_regression.py
+          node DarwinBridge/Tests/jit_protocol_test.js
+
+      - name: Exercise the actual Swift first-run packager
+        run: |
+          swiftc DarwinBridge/Core/Models.swift DarwinBridge/Core/MachOParser.swift \
+            DarwinBridge/Core/LoLLiveContainerPackager.swift DarwinBridge/Tests/packager_cli.swift \
+            -o /tmp/db-packager
+          /tmp/db-packager DarwinBridge/artifacts/test-target/darwinbridge-test-arm64 \
+            DarwinBridge/build/livecontainer-plugin artifacts/loader-audit/fixture.ipa
+          python3 DarwinBridge/Tools/verify_package.py artifacts/loader-audit/fixture.ipa \
+            DarwinBridge/artifacts/test-target/darwinbridge-test-arm64 artifacts/loader-audit/final --sign
 
       - name: Build unsigned IPA
         working-directory: DarwinBridge
@@ -90,10 +90,23 @@ jobs:
           test -f build/Payload/DarwinBridge.app/DarwinBridgeLCPlugin.dylib
           unzip -l build/DarwinBridge-unsigned.ipa | grep -q "Payload/DarwinBridge.app/DarwinBridgeLCPlugin.dylib"
 
+      - name: Audit pinned real Riot executable (not a release candidate)
+        run: |
+          python3 -m venv /tmp/db-harvest-env
+          /tmp/db-harvest-env/bin/pip install -r tools/riot-mac-harvester/requirements.txt
+          /tmp/db-harvest-env/bin/python DarwinBridge/Tools/harvest_loader_audit.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: DarwinBridge-loader-audit
+          path: artifacts/loader-audit
+          if-no-files-found: error
+
       - uses: actions/upload-artifact@v4
         with:
-          name: DarwinBridge-LiveContainer-plugin
-          path: DarwinBridge/build/livecontainer-plugin/DarwinBridgeLCPlugin.dylib
+          name: DarwinBridge-21G-debugger
+          path: DarwinBridge/JIT/darwinbridge-universal.js
 
       - uses: actions/upload-artifact@v4
         with:

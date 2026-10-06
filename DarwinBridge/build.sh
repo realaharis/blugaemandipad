@@ -11,7 +11,7 @@ trap 'rm -rf "$PLUGIN_STAGING"' EXIT
 
 # Preserve the plugin because build.sh recreates the main build directory.
 if [ -f "$PLUGIN_SRC" ]; then
-  cp "$PLUGIN_SRC" "$PLUGIN_STAGING/DarwinBridgeLCPlugin.dylib"
+  cp "$BUILD/livecontainer-plugin/"*.dylib "$PLUGIN_STAGING/"
 fi
 
 rm -rf "$BUILD"
@@ -34,6 +34,9 @@ cp "$ROOT/JIT/darwinbridge-universal.js" "$APP/darwinbridge-universal.js"
 
 PLUGIN="$PLUGIN_STAGING/DarwinBridgeLCPlugin.dylib"
 if [ -f "$PLUGIN" ]; then
+  mkdir -p "$APP/DarwinBridgeRuntime"
+  cp "$PLUGIN_STAGING/"*.dylib "$APP/DarwinBridgeRuntime/"
+  # Preserve the historical resource location for existing diagnostics.
   cp "$PLUGIN" "$APP/DarwinBridgeLCPlugin.dylib"
 else
   echo "error: DarwinBridgeLCPlugin.dylib was not built before build.sh" >&2

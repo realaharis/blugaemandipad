@@ -32,16 +32,21 @@ struct LoLLiveContainerPackager {
     private static let lcVersionMinIPhoneOS: UInt32 = 0x25
 
     static func buildMinimalIPA(executable source: Data,
-                                displayName: String = "League of Legends") throws -> LoLLiveContainerPackageResult {
+                                displayName: String = "League of Legends",
+                                runtimeDirectory: URL? = nil,
+                                outputURL: URL? = nil) throws -> LoLLiveContainerPackageResult {
         var executable = try MachOParser.preferredArm64Slice(source)
+        try removeCodeSignatureCommand(&executable)
         let redirects = try patchForLiveContainer(&executable)
         try injectBootstrapLoadCommand(&executable,
                                        path: "@executable_path/Frameworks/DBBootstrap.dylib")
 
-        guard let pluginURL = Bundle.main.url(forResource: "DarwinBridgeLCPlugin", withExtension: "dylib") else {
+        let runtime = runtimeDirectory ?? Bundle.main.bundleURL.appendingPathComponent("DarwinBridgeRuntime")
+        let pluginURL = runtime.appendingPathComponent("DarwinBridgeLCPlugin.dylib")
+        guard FileManager.default.fileExists(atPath: pluginURL.path) else {
             throw LoLLiveContainerPackageError.pluginMissing
         }
-        let plugin = try Data(contentsOf: pluginURL, options: .mappedIfSafe)
+        let plugin = try Data(contentsOf: pluginURL)
 
         let executableName = "LeagueOfLegends"
         let info = makeInfoPlist(executableName: executableName, displayName: displayName)
@@ -49,24 +54,17 @@ struct LoLLiveContainerPackager {
         var zip = StoreZipWriter()
         try zip.add(path: "Payload/LeagueOfLegends.app/Info.plist", data: info)
         try zip.add(path: "Payload/LeagueOfLegends.app/\(executableName)", data: executable)
-        let bootstrap = try pluginWithInstallName(plugin, "@rpath/DBBootstrap.dylib")
-        try zip.add(path: "Payload/LeagueOfLegends.app/Frameworks/DBBootstrap.dylib",
-                    data: bootstrap)
-
-        // Keep each redirected dependency at a distinct dylib ordinal. dyld may
-        // coalesce duplicate load paths, which would shift the original Mach-O
-        // library ordinals and make BIND_OPCODE_DO_BIND fail. Each compatibility
-        // alias gets its own LC_ID_DYLIB and filename while exporting the same
-        // DarwinBridge compatibility symbols.
-        for redirect in redirects {
-            guard let fileName = redirect.fileName,
-                  let installName = redirect.installName else { continue }
-            let aliasedPlugin = try pluginWithInstallName(plugin, installName)
-            try zip.add(path: "Payload/LeagueOfLegends.app/Frameworks/\(fileName)",
-                        data: aliasedPlugin)
+        // Copy pre-linked, pre-signed forwarding dylibs byte for byte. Cloning
+        // the implementation duplicated every ObjC class and invalidated signatures.
+        var files = Set(redirects.compactMap(\.fileName))
+        files.insert("DBBootstrap.dylib")
+        files.insert("DarwinBridgeLCPlugin.dylib")
+        for name in files.sorted() {
+            let bytes = try Data(contentsOf: runtime.appendingPathComponent(name))
+            try zip.add(path: "Payload/LeagueOfLegends.app/Frameworks/\(name)", data: bytes)
         }
 
-        let out = FileManager.default.temporaryDirectory
+        let out = outputURL ?? FileManager.default.temporaryDirectory
             .appendingPathComponent("DarwinBridge-LoL-first-run.ipa")
         try zip.finalize().write(to: out, options: .atomic)
 
@@ -140,6 +138,12 @@ struct LoLLiveContainerPackager {
                     for (index, byte) in replacement.utf8.enumerated() {
                         data[start + index] = byte
                     }
+                    if redirect.fileName != nil {
+                        // A redirected dependency requests DarwinBridge ABI 1,
+                        // not the original desktop framework's version number.
+                        put32(&data, cursor + 16, version(1, 0, 0))
+                        put32(&data, cursor + 20, version(1, 0, 0))
+                    }
                     redirects.append(redirect)
                 }
             }
@@ -174,7 +178,7 @@ struct LoLLiveContainerPackager {
             }
             let cmd = try u32(data, cursor)
             let cmdsize = Int(try u32(data, cursor + 4))
-            guard cmdsize >= 8, cursor + cmdsize <= commandsEnd else {
+            guard cmdsize >= 8, cmdsize % 8 == 0, cursor + cmdsize <= commandsEnd else {
                 throw LoLLiveContainerPackageError.malformed("invalid load command during bootstrap injection")
             }
             if cmd == 0x19, cmdsize >= 72 { // LC_SEGMENT_64
@@ -186,7 +190,9 @@ struct LoLLiveContainerPackager {
                 let nsects = Int(try u32(data, cursor + 64))
                 var section = cursor + 72
                 for _ in 0..<nsects {
-                    guard section + 80 <= cursor + cmdsize else { break }
+                    guard section + 80 <= cursor + cmdsize else {
+                        throw LoLLiveContainerPackageError.malformed("section table exceeds command")
+                    }
                     let offset = Int(try u32(data, section + 48))
                     let size = try u64(data, section + 40)
                     if size > 0, offset > 0 {
@@ -195,8 +201,21 @@ struct LoLLiveContainerPackager {
                     section += 80
                 }
             }
+            if [UInt32(0x1D), 0x1E, 0x26, 0x29, 0x2B, 0x2E, 0x80000033, 0x80000034].contains(cmd), cmdsize >= 16 {
+                let off = Int(try u32(data, cursor + 8)), size = Int(try u32(data, cursor + 12))
+                if size > 0 { firstFileData = min(firstFileData, off) }
+            } else if cmd == 0x22 || cmd == 0x80000022 {
+                guard cmdsize >= 48 else { throw LoLLiveContainerPackageError.malformed("short dyld info") }
+                for pair in stride(from: 8, to: 48, by: 8) {
+                    if try u32(data, cursor + pair + 4) > 0 { firstFileData = min(firstFileData, Int(try u32(data, cursor + pair))) }
+                }
+            } else if cmd == 0x2, cmdsize >= 24 {
+                if try u32(data, cursor + 12) > 0 { firstFileData = min(firstFileData, Int(try u32(data, cursor + 8))) }
+                if try u32(data, cursor + 20) > 0 { firstFileData = min(firstFileData, Int(try u32(data, cursor + 16))) }
+            }
             cursor += cmdsize
         }
+        guard cursor == commandsEnd else { throw LoLLiveContainerPackageError.malformed("command size mismatch") }
 
         let nameBytes = Array(path.utf8) + [0]
         let rawSize = 24 + nameBytes.count
@@ -254,6 +273,32 @@ struct LoLLiveContainerPackager {
         }
     }
 
+    private static func removeCodeSignatureCommand(_ data: inout Data) throws {
+        guard data.count >= 32 else { throw LoLLiveContainerPackageError.malformed("short header") }
+        let count = Int(try u32(data, 16))
+        let length = Int(try u32(data, 20))
+        guard 32 + length <= data.count else { throw LoLLiveContainerPackageError.malformed("commands past EOF") }
+        var commands = Data()
+        var cursor = 32
+        var kept: UInt32 = 0
+        for _ in 0..<count {
+            let size = Int(try u32(data, cursor + 4))
+            guard size >= 8, size % 8 == 0, cursor + size <= 32 + length else {
+                throw LoLLiveContainerPackageError.malformed("invalid signing load command")
+            }
+            if try u32(data, cursor) != 0x1D {
+                commands.append(data[cursor..<cursor + size]); kept += 1
+            }
+            cursor += size
+        }
+        guard cursor == 32 + length else { throw LoLLiveContainerPackageError.malformed("command count/size mismatch") }
+        data.replaceSubrange(32..<32 + length, with: commands + Data(repeating: 0, count: length - commands.count))
+        put32(&data, 16, kept)
+        put32(&data, 20, UInt32(commands.count))
+        // Preserve every file/section offset. The detached old signature bytes
+        // in LINKEDIT are inert; the destination signer rebuilds the signature.
+    }
+
     private static func dependencyRedirect(for path: String) -> DependencyRedirect? {
         let p = path.lowercased()
 
@@ -298,57 +343,10 @@ struct LoLLiveContainerPackager {
         if p.contains("security.framework") { return shim("DBSecurity.dylib") }
         if p.contains("systemconfiguration.framework") { return shim("DBSystemConfiguration.dylib") }
 
+        for framework in ["WebKit", "AudioUnit", "CoreAudio", "CoreVideo", "Metal", "QuartzCore", "AudioToolbox"] {
+            if p.contains("/" + framework.lowercased() + ".framework/") { return native(framework) }
+        }
         return nil
-    }
-
-    private static func pluginWithInstallName(_ source: Data,
-                                              _ installName: String) throws -> Data {
-        var data = source
-        guard data.count >= 32, try u32(data, 0) == MachOParser.mhMagic64 else {
-            throw LoLLiveContainerPackageError.malformed("compatibility plugin is not a thin 64-bit Mach-O")
-        }
-
-        let ncmds = Int(try u32(data, 16))
-        var cursor = 32
-        var patched = false
-
-        for _ in 0..<ncmds {
-            guard cursor + 8 <= data.count else {
-                throw LoLLiveContainerPackageError.malformed("truncated plugin load commands")
-            }
-            let cmd = try u32(data, cursor)
-            let cmdsize = Int(try u32(data, cursor + 4))
-            guard cmdsize >= 8, cursor + cmdsize <= data.count else {
-                throw LoLLiveContainerPackageError.malformed("invalid plugin load command")
-            }
-
-            if cmd == lcIdDylib {
-                guard cmdsize >= 24 else {
-                    throw LoLLiveContainerPackageError.malformed("short plugin LC_ID_DYLIB")
-                }
-                let nameOffset = Int(try u32(data, cursor + 8))
-                let start = cursor + nameOffset
-                let end = cursor + cmdsize
-                guard start >= cursor + 8, start < end else {
-                    throw LoLLiveContainerPackageError.malformed("invalid plugin install-name offset")
-                }
-                guard installName.utf8.count + 1 <= end - start else {
-                    throw LoLLiveContainerPackageError.unsupportedDependency(installName)
-                }
-                for i in start..<end { data[i] = 0 }
-                for (index, byte) in installName.utf8.enumerated() {
-                    data[start + index] = byte
-                }
-                patched = true
-                break
-            }
-            cursor += cmdsize
-        }
-
-        guard patched else {
-            throw LoLLiveContainerPackageError.malformed("compatibility plugin has no LC_ID_DYLIB")
-        }
-        return data
     }
 
     private static func makeInfoPlist(executableName: String, displayName: String) -> Data {
@@ -361,7 +359,9 @@ struct LoLLiveContainerPackager {
             "CFBundleName": displayName,
             "CFBundlePackageType": "APPL",
             "CFBundleShortVersionString": "1.0",
-            "CFBundleVersion": "1",
+            "CFBundleVersion": "21",
+            "DBRuntimeStage": "21G-abi",
+            "DBRequiresLiveContainerResign": true,
             "LSRequiresIPhoneOS": true,
             "UIFileSharingEnabled": true,
             "LSSupportsOpeningDocumentsInPlace": true,
