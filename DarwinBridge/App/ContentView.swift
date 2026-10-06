@@ -1129,6 +1129,61 @@ struct ContentView: View {
                     fixupPlan = nil
                     guestSpace = nil
                     appliedFixups = nil
+
+                    // Fast path for the real LoL client: all analysis stages
+                    // required by the first-run packager are deterministic, so
+                    // run them automatically after import and immediately emit
+                    // a fresh LiveContainer IPA. This avoids repeating Stages
+                    // 15C -> 20B for every compatibility iteration.
+                    do {
+                        let deep = try DeepSymbolScanner.scan(data: data, image: parsed)
+                        deepSymbols = deep
+
+                        let plan = LoLCompatibilityPlanner.make(from: deep)
+                        lolCompatibilityPlan = plan
+                        lolShimCoverage = LoLShimCoverageAnalyzer.analyze(plan: plan, scan: deep)
+
+                        let runtime = LoLRuntimeShimValidator.validate(scan: deep)
+                        lolRuntimeValidation = runtime
+
+                        let dryRun = LoLLaunchDryRunAnalyzer.analyze(
+                            data: data,
+                            image: parsed,
+                            deepScan: deep,
+                            runtimeValidation: runtime
+                        )
+                        lolLaunchDryRun = dryRun
+
+                        let backend = LiveContainerExecutionBackend.inspect(
+                            image: parsed,
+                            deepScan: deep,
+                            runtimeValidation: runtime,
+                            launchDryRun: dryRun
+                        )
+                        liveContainerBackend = backend
+
+                        guard dryRun.ready else {
+                            throw LoLLiveContainerPackageError.malformed("automatic launch dry-run is not READY")
+                        }
+                        guard backend.compatible else {
+                            throw LoLLiveContainerPackageError.malformed(
+                                "LiveContainer backend is not READY: " +
+                                backend.requirements.joined(separator: ", ")
+                            )
+                        }
+
+                        let package = try LoLLiveContainerPackager.buildMinimalIPA(
+                            executable: data
+                        )
+                        firstRunPackageURL = package.ipaURL
+                        firstRunPackageSummary =
+                            "AUTO READY — patched \(package.patchedDependencies.count) dependency path(s); " +
+                            "imports \(deep.imports.count); unresolved launch imports \(dryRun.unresolvedImports)."
+                    } catch {
+                        firstRunPackageURL = nil
+                        firstRunPackageSummary = nil
+                        errorText = "Automatic LoL first-run build failed: " + error.localizedDescription
+                    }
                 } catch {
                     errorText = error.localizedDescription
                     image = nil
