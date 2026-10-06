@@ -7,7 +7,12 @@ struct SymbolBroker {
         imports.map { item in
             let dependency = dependencyPath(for: item.libraryOrdinal, image: image)
             let host = lookup(item.name)
+#if canImport(UIKit)
             let shim = host == nil ? LoLRuntimeShimRegistry.pointer(for: item.name) : nil
+#else
+            // Host-side parser smoke tests compile without UIKit/LoLRuntimeShims.
+            let shim: UnsafeMutableRawPointer? = nil
+#endif
             let address = host ?? shim
             return SymbolResolution(name: item.name,
                                     libraryOrdinal: item.libraryOrdinal,
