@@ -864,6 +864,24 @@ DB_CFLOCALESTR(kCFLocaleAlternateQuotationEndDelimiterKey, "kCFLocaleAlternateQu
 
 #undef DB_CFLOCALESTR
 
+
+// CoreFoundation process-lifetime object constants. Export writable backing
+// under private C identifiers so DBCoreFoundation satisfies two-level dyld
+// binds, then populate them with native Foundation/CoreFoundation objects in
+// the plugin constructor before dlopen returns to the guest.
+__attribute__((visibility("default"), used))
+CFBooleanRef DB_kCFBooleanTrue __asm__("_kCFBooleanTrue") = NULL;
+__attribute__((visibility("default"), used))
+CFBooleanRef DB_kCFBooleanFalse __asm__("_kCFBooleanFalse") = NULL;
+__attribute__((visibility("default"), used))
+CFNullRef DB_kCFNull __asm__("_kCFNull") = NULL;
+__attribute__((visibility("default"), used))
+CFNumberRef DB_kCFNumberNaN __asm__("_kCFNumberNaN") = NULL;
+__attribute__((visibility("default"), used))
+CFNumberRef DB_kCFNumberPositiveInfinity __asm__("_kCFNumberPositiveInfinity") = NULL;
+__attribute__((visibility("default"), used))
+CFNumberRef DB_kCFNumberNegativeInfinity __asm__("_kCFNumberNegativeInfinity") = NULL;
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
@@ -888,6 +906,12 @@ const char *DBDarwinBridgePluginVersion(void) {
 
 __attribute__((constructor))
 static void DBDarwinBridgePluginInit(void) {
+    DB_kCFBooleanTrue = (__bridge CFBooleanRef)@YES;
+    DB_kCFBooleanFalse = (__bridge CFBooleanRef)@NO;
+    DB_kCFNull = (__bridge CFNullRef)[NSNull null];
+    DB_kCFNumberNaN = (__bridge CFNumberRef)@(NAN);
+    DB_kCFNumberPositiveInfinity = (__bridge CFNumberRef)@(INFINITY);
+    DB_kCFNumberNegativeInfinity = (__bridge CFNumberRef)@(-INFINITY);
     // Some macOS-linked clients bind NSHTTPURLResponse from CFNetwork while
     // iOS exposes the class through Foundation. Register a compatibility class
     // under the expected Objective-C runtime name only when it is absent.
