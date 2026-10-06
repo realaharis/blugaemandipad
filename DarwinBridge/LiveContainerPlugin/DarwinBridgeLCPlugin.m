@@ -108,6 +108,40 @@ Class DBExportedNSHTTPURLResponse __asm__("_OBJC_CLASS_$_NSHTTPURLResponse") = N
 
 __attribute__((visibility("default"), used, weak))
 __attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSCharacterSet __asm__("_OBJC_CLASS_$_NSCharacterSet") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSMutableCharacterSet __asm__("_OBJC_CLASS_$_NSMutableCharacterSet") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSScanner __asm__("_OBJC_CLASS_$_NSScanner") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSLocale __asm__("_OBJC_CLASS_$_NSLocale") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSTimeZone __asm__("_OBJC_CLASS_$_NSTimeZone") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSCalendar __asm__("_OBJC_CLASS_$_NSCalendar") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSUUID __asm__("_OBJC_CLASS_$_NSUUID") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSIndexSet __asm__("_OBJC_CLASS_$_NSIndexSet") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSMutableIndexSet __asm__("_OBJC_CLASS_$_NSMutableIndexSet") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSSet __asm__("_OBJC_CLASS_$_NSSet") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSMutableSet __asm__("_OBJC_CLASS_$_NSMutableSet") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSOrderedSet __asm__("_OBJC_CLASS_$_NSOrderedSet") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSMutableOrderedSet __asm__("_OBJC_CLASS_$_NSMutableOrderedSet") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSNull __asm__("_OBJC_CLASS_$_NSNull") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSRegularExpression __asm__("_OBJC_CLASS_$_NSRegularExpression") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSPredicate __asm__("_OBJC_CLASS_$_NSPredicate") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSSortDescriptor __asm__("_OBJC_CLASS_$_NSSortDescriptor") = Nil;
 Class DBExportedNSAutoreleasePool __asm__("_OBJC_CLASS_$_NSAutoreleasePool") = Nil;
 __attribute__((visibility("default"), used, weak))
 Class DBExportedNSObject __asm__("_OBJC_CLASS_$_NSObject") = Nil;
@@ -566,6 +600,23 @@ static void DBDarwinBridgePluginInit(void) {
         httpResponseClass = DBNSHTTPURLResponseShim.class;
     }
     DBExportedNSHTTPURLResponse = httpResponseClass;
+    DBExportedNSCharacterSet = objc_getClass("NSCharacterSet");
+    DBExportedNSMutableCharacterSet = objc_getClass("NSMutableCharacterSet");
+    DBExportedNSScanner = objc_getClass("NSScanner");
+    DBExportedNSLocale = objc_getClass("NSLocale");
+    DBExportedNSTimeZone = objc_getClass("NSTimeZone");
+    DBExportedNSCalendar = objc_getClass("NSCalendar");
+    DBExportedNSUUID = objc_getClass("NSUUID");
+    DBExportedNSIndexSet = objc_getClass("NSIndexSet");
+    DBExportedNSMutableIndexSet = objc_getClass("NSMutableIndexSet");
+    DBExportedNSSet = objc_getClass("NSSet");
+    DBExportedNSMutableSet = objc_getClass("NSMutableSet");
+    DBExportedNSOrderedSet = objc_getClass("NSOrderedSet");
+    DBExportedNSMutableOrderedSet = objc_getClass("NSMutableOrderedSet");
+    DBExportedNSNull = objc_getClass("NSNull");
+    DBExportedNSRegularExpression = objc_getClass("NSRegularExpression");
+    DBExportedNSPredicate = objc_getClass("NSPredicate");
+    DBExportedNSSortDescriptor = objc_getClass("NSSortDescriptor");
     DBExportedNSAutoreleasePool = objc_getClass("NSAutoreleasePool");
     DBExportedNSObject = objc_getClass("NSObject");
     DBExportedNSException = objc_getClass("NSException");
