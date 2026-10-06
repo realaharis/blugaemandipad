@@ -40,7 +40,7 @@ jobs:
           "$CLANG" \
             -target arm64-apple-macos13.0 \
             -isysroot "$SDK" \
-            -Wl,-no_pie \
+            -Wl,-headerpad,0x1000 \
             -Wl,-needed_framework,AppKit -Wl,-needed_framework,Foundation -Wl,-needed_framework,CFNetwork \
             Tests/real_macho_return42.c \
             -o artifacts/test-target/darwinbridge-test-arm64
@@ -79,6 +79,12 @@ jobs:
             DarwinBridge/build/livecontainer-plugin artifacts/loader-audit/fixture.ipa
           python3 DarwinBridge/Tools/verify_package.py artifacts/loader-audit/fixture.ipa \
             DarwinBridge/artifacts/test-target/darwinbridge-test-arm64 artifacts/loader-audit/final --sign
+
+      - name: Exercise pinned LiveContainer executable patch and re-sign
+        run: |
+          python3 DarwinBridge/Tools/verify_livecontainer_patch.py \
+            artifacts/loader-audit/final/Payload/LeagueOfLegends.app/LeagueOfLegends \
+            artifacts/loader-audit/livecontainer
 
       - name: Build unsigned IPA
         working-directory: DarwinBridge

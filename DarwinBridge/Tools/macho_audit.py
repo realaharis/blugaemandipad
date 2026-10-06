@@ -104,7 +104,16 @@ class MachO:
                 for i in range(0,s['size'],8):
                     raw=self.u64(s['offset']+i)
                     # Linked arm64 ptr64/ptr64-offset chain encodes target in low 36 bits.
-                    result.append((raw & ((1<<36)-1)) if self.blob(0x80000034) else raw)
+                    blob = self.blob(0x80000034)
+                    if not blob: result.append(raw); continue
+                    starts = struct.unpack_from('<I',blob,4)[0]
+                    segindex = next(i for i,g in enumerate(self.segments) if g['address'] <= s['address'] < g['address']+g['size'])
+                    rel = struct.unpack_from('<I',blob,starts+4+segindex*4)[0]
+                    check(rel>0,'initializer section missing chain start')
+                    fmt = struct.unpack_from('<H',blob,starts+rel+6)[0]
+                    check(fmt in (2,6) and raw>>63==0,'unsupported initializer pointer format')
+                    target = raw & ((1<<36)-1)
+                    result.append(target + text['address'] if fmt==6 else target | (((raw>>36)&255)<<56))
         for va in result:
             check(any(s['name']=='__text' and s['address'] <= va < s['address']+s['size'] for s in self.sections),'initializer is not executable __text')
         return result
