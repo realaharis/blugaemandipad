@@ -74,6 +74,9 @@ jobs:
           grep -q " _OBJC_CLASS_\\$_NSCharacterSet$" build/livecontainer-plugin/exports.txt
           grep -q " _OBJC_CLASS_\\$_NSAutoreleasePool$" build/livecontainer-plugin/exports.txt
           grep -q " _OBJC_CLASS_\\$_NSUserDefaults$" build/livecontainer-plugin/exports.txt
+          grep -q " _NSFontAttributeName$" build/livecontainer-plugin/exports.txt
+          grep -q " _NSForegroundColorAttributeName$" build/livecontainer-plugin/exports.txt
+          grep -q " _NSParagraphStyleAttributeName$" build/livecontainer-plugin/exports.txt
 
       - name: Build unsigned IPA
         working-directory: DarwinBridge
