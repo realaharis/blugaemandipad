@@ -63,6 +63,15 @@ jobs:
         working-directory: DarwinBridge
         run: chmod +x LiveContainerPlugin/build-plugin.sh && LiveContainerPlugin/build-plugin.sh
 
+      - name: Verify compatibility exports
+        working-directory: DarwinBridge
+        run: |
+          nm -gU build/livecontainer-plugin/DarwinBridgeLCPlugin.dylib > build/livecontainer-plugin/exports.txt
+          grep -q " _kSecClass$" build/livecontainer-plugin/exports.txt
+          grep -q " _kSecMatchTrustedOnly$" build/livecontainer-plugin/exports.txt
+          grep -q " _kCFStreamErrorDomainNetDB$" build/livecontainer-plugin/exports.txt
+          grep -q " _OBJC_CLASS_\\$_NSAppleEventManager$" build/livecontainer-plugin/exports.txt
+
       - name: Build unsigned IPA
         working-directory: DarwinBridge
         run: ./build.sh
