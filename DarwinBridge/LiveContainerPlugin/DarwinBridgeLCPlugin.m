@@ -106,6 +106,29 @@ DB_EMPTY_CLASS(NSAppleEventManager)
 __attribute__((visibility("default"), used))
 Class DBExportedNSHTTPURLResponse __asm__("_OBJC_CLASS_$_NSHTTPURLResponse") = Nil;
 
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSUserDefaults __asm__("_OBJC_CLASS_$_NSUserDefaults") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSNotificationCenter __asm__("_OBJC_CLASS_$_NSNotificationCenter") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSProcessInfo __asm__("_OBJC_CLASS_$_NSProcessInfo") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSFileManager __asm__("_OBJC_CLASS_$_NSFileManager") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSBundle __asm__("_OBJC_CLASS_$_NSBundle") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSURL __asm__("_OBJC_CLASS_$_NSURL") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSData __asm__("_OBJC_CLASS_$_NSData") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSString __asm__("_OBJC_CLASS_$_NSString") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSArray __asm__("_OBJC_CLASS_$_NSArray") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSDictionary __asm__("_OBJC_CLASS_$_NSDictionary") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSError __asm__("_OBJC_CLASS_$_NSError") = Nil;
+
 __attribute__((visibility("default"), used))
 Class DBExportedNSMutableURLRequest __asm__("_OBJC_CLASS_$_NSMutableURLRequest") = Nil;
 __attribute__((visibility("default"), used))
@@ -445,6 +468,17 @@ static void DBDarwinBridgePluginInit(void) {
         httpResponseClass = DBNSHTTPURLResponseShim.class;
     }
     DBExportedNSHTTPURLResponse = httpResponseClass;
+    DBExportedNSUserDefaults = objc_getClass("NSUserDefaults");
+    DBExportedNSNotificationCenter = objc_getClass("NSNotificationCenter");
+    DBExportedNSProcessInfo = objc_getClass("NSProcessInfo");
+    DBExportedNSFileManager = objc_getClass("NSFileManager");
+    DBExportedNSBundle = objc_getClass("NSBundle");
+    DBExportedNSURL = objc_getClass("NSURL");
+    DBExportedNSData = objc_getClass("NSData");
+    DBExportedNSString = objc_getClass("NSString");
+    DBExportedNSArray = objc_getClass("NSArray");
+    DBExportedNSDictionary = objc_getClass("NSDictionary");
+    DBExportedNSError = objc_getClass("NSError");
     DBExportedNSMutableURLRequest = objc_getClass("NSMutableURLRequest");
     DBExportedNSURLRequest = objc_getClass("NSURLRequest");
     DBExportedNSURLResponse = objc_getClass("NSURLResponse");
