@@ -132,6 +132,37 @@ Class DBExportedNSURLSession __asm__("_OBJC_CLASS_$_NSURLSession") = Nil;
 __attribute__((visibility("default"), used))
 Class DBExportedNSURLSessionConfiguration __asm__("_OBJC_CLASS_$_NSURLSessionConfiguration") = Nil;
 
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLConnection __asm__("_OBJC_CLASS_$_NSURLConnection") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLCredentialStorage __asm__("_OBJC_CLASS_$_NSURLCredentialStorage") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLSessionTask __asm__("_OBJC_CLASS_$_NSURLSessionTask") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLSessionDataTask __asm__("_OBJC_CLASS_$_NSURLSessionDataTask") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLSessionDownloadTask __asm__("_OBJC_CLASS_$_NSURLSessionDownloadTask") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLSessionUploadTask __asm__("_OBJC_CLASS_$_NSURLSessionUploadTask") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLSessionStreamTask __asm__("_OBJC_CLASS_$_NSURLSessionStreamTask") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLSessionWebSocketTask __asm__("_OBJC_CLASS_$_NSURLSessionWebSocketTask") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLSessionTaskMetrics __asm__("_OBJC_CLASS_$_NSURLSessionTaskMetrics") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLSessionTaskTransactionMetrics __asm__("_OBJC_CLASS_$_NSURLSessionTaskTransactionMetrics") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSHost __asm__("_OBJC_CLASS_$_NSHost") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSNetService __asm__("_OBJC_CLASS_$_NSNetService") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSNetServiceBrowser __asm__("_OBJC_CLASS_$_NSNetServiceBrowser") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSInputStream __asm__("_OBJC_CLASS_$_NSInputStream") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSOutputStream __asm__("_OBJC_CLASS_$_NSOutputStream") = Nil;
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
@@ -194,6 +225,21 @@ static void DBDarwinBridgePluginInit(void) {
     DBExportedNSURLProtocol = objc_getClass("NSURLProtocol");
     DBExportedNSURLSession = objc_getClass("NSURLSession");
     DBExportedNSURLSessionConfiguration = objc_getClass("NSURLSessionConfiguration");
+    DBExportedNSURLConnection = objc_getClass("NSURLConnection");
+    DBExportedNSURLCredentialStorage = objc_getClass("NSURLCredentialStorage");
+    DBExportedNSURLSessionTask = objc_getClass("NSURLSessionTask");
+    DBExportedNSURLSessionDataTask = objc_getClass("NSURLSessionDataTask");
+    DBExportedNSURLSessionDownloadTask = objc_getClass("NSURLSessionDownloadTask");
+    DBExportedNSURLSessionUploadTask = objc_getClass("NSURLSessionUploadTask");
+    DBExportedNSURLSessionStreamTask = objc_getClass("NSURLSessionStreamTask");
+    DBExportedNSURLSessionWebSocketTask = objc_getClass("NSURLSessionWebSocketTask");
+    DBExportedNSURLSessionTaskMetrics = objc_getClass("NSURLSessionTaskMetrics");
+    DBExportedNSURLSessionTaskTransactionMetrics = objc_getClass("NSURLSessionTaskTransactionMetrics");
+    DBExportedNSHost = objc_getClass("NSHost");
+    DBExportedNSNetService = objc_getClass("NSNetService");
+    DBExportedNSNetServiceBrowser = objc_getClass("NSNetServiceBrowser");
+    DBExportedNSInputStream = objc_getClass("NSInputStream");
+    DBExportedNSOutputStream = objc_getClass("NSOutputStream");
     DBLog([NSString stringWithFormat:@"exported NSHTTPURLResponse class symbol -> %@", NSStringFromClass(httpResponseClass)]);
     DBLog(@"exported CFNetwork/Foundation URL compatibility class symbols");
 
