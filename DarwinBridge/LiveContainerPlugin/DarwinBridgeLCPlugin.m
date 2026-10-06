@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <CFNetwork/CFNetwork.h>
 #import <objc/runtime.h>
 
 static NSString * const DBPluginLogPrefix = @"[DarwinBridgeLC]";
@@ -162,6 +163,69 @@ __attribute__((visibility("default"), used))
 Class DBExportedNSInputStream __asm__("_OBJC_CLASS_$_NSInputStream") = Nil;
 __attribute__((visibility("default"), used))
 Class DBExportedNSOutputStream __asm__("_OBJC_CLASS_$_NSOutputStream") = Nil;
+
+
+// CFNetwork on macOS exposes a number of real data globals that older/native
+// clients bind by dylib ordinal.  iOS may provide them from a different image
+// or omit the legacy export entirely, so keep compatible exports in the
+// DarwinBridge CFNetwork alias. Values match Apple's historical CFNetwork ABI.
+__attribute__((visibility("default"), used))
+const SInt32 DB_kCFStreamErrorDomainFTP __asm__("_kCFStreamErrorDomainFTP") = 6;
+__attribute__((visibility("default"), used))
+const SInt32 DB_kCFStreamErrorDomainHTTP __asm__("_kCFStreamErrorDomainHTTP") = 4;
+__attribute__((visibility("default"), used))
+const SInt32 DB_kCFStreamErrorDomainNetDB __asm__("_kCFStreamErrorDomainNetDB") = 12;
+__attribute__((visibility("default"), used))
+const SInt32 DB_kCFStreamErrorDomainSystemConfiguration __asm__("_kCFStreamErrorDomainSystemConfiguration") = 13;
+__attribute__((visibility("default"), used))
+const SInt32 DB_kCFStreamErrorDomainMach __asm__("_kCFStreamErrorDomainMach") = 11;
+__attribute__((visibility("default"), used))
+const SInt32 DB_kCFStreamErrorDomainNetServices __asm__("_kCFStreamErrorDomainNetServices") = 10;
+__attribute__((visibility("default"), used))
+const CFIndex DB_kCFStreamErrorDomainWinSock __asm__("_kCFStreamErrorDomainWinSock") = 7;
+__attribute__((visibility("default"), used))
+const int DB_kCFStreamErrorDomainSOCKS __asm__("_kCFStreamErrorDomainSOCKS") = 5;
+__attribute__((visibility("default"), used))
+const int DB_kCFStreamErrorDomainSSL __asm__("_kCFStreamErrorDomainSSL") = 3;
+
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFErrorDomainCFNetwork __asm__("_kCFErrorDomainCFNetwork") = CFSTR("kCFErrorDomainCFNetwork");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFHTTPVersion1_0 __asm__("_kCFHTTPVersion1_0") = CFSTR("HTTP/1.0");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFHTTPVersion1_1 __asm__("_kCFHTTPVersion1_1") = CFSTR("HTTP/1.1");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFProxyHostNameKey __asm__("_kCFProxyHostNameKey") = CFSTR("kCFProxyHostNameKey");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFProxyPortNumberKey __asm__("_kCFProxyPortNumberKey") = CFSTR("kCFProxyPortNumberKey");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamNetworkServiceType __asm__("_kCFStreamNetworkServiceType") = CFSTR("kCFStreamNetworkServiceType");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamNetworkServiceTypeVoIP __asm__("_kCFStreamNetworkServiceTypeVoIP") = CFSTR("kCFStreamNetworkServiceTypeVoIP");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamPropertyHTTPProxy __asm__("_kCFStreamPropertyHTTPProxy") = CFSTR("kCFStreamPropertyHTTPProxy");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamPropertyHTTPResponseHeader __asm__("_kCFStreamPropertyHTTPResponseHeader") = CFSTR("kCFStreamPropertyHTTPResponseHeader");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamPropertyHTTPShouldAutoredirect __asm__("_kCFStreamPropertyHTTPShouldAutoredirect") = CFSTR("kCFStreamPropertyHTTPShouldAutoredirect");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamPropertySSLSettings __asm__("_kCFStreamPropertySSLSettings") = CFSTR("kCFStreamPropertySSLSettings");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamSSLAllowsAnyRoot __asm__("_kCFStreamSSLAllowsAnyRoot") = CFSTR("kCFStreamSSLAllowsAnyRoot");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamSSLAllowsExpiredCertificates __asm__("_kCFStreamSSLAllowsExpiredCertificates") = CFSTR("kCFStreamSSLAllowsExpiredCertificates");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamSSLAllowsExpiredRoots __asm__("_kCFStreamSSLAllowsExpiredRoots") = CFSTR("kCFStreamSSLAllowsExpiredRoots");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamSSLCertificates __asm__("_kCFStreamSSLCertificates") = CFSTR("kCFStreamSSLCertificates");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamSSLIsServer __asm__("_kCFStreamSSLIsServer") = CFSTR("kCFStreamSSLIsServer");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamSSLLevel __asm__("_kCFStreamSSLLevel") = CFSTR("kCFStreamSSLLevel");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamSSLPeerName __asm__("_kCFStreamSSLPeerName") = CFSTR("kCFStreamSSLPeerName");
+__attribute__((visibility("default"), used))
+const CFStringRef DB_kCFStreamSSLValidatesCertificateChain __asm__("_kCFStreamSSLValidatesCertificateChain") = CFSTR("kCFStreamSSLValidatesCertificateChain");
 
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
