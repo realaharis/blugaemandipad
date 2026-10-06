@@ -107,6 +107,32 @@ __attribute__((visibility("default"), used))
 Class DBExportedNSHTTPURLResponse __asm__("_OBJC_CLASS_$_NSHTTPURLResponse") = Nil;
 
 __attribute__((visibility("default"), used, weak))
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSAutoreleasePool __asm__("_OBJC_CLASS_$_NSAutoreleasePool") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSObject __asm__("_OBJC_CLASS_$_NSObject") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSException __asm__("_OBJC_CLASS_$_NSException") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSRunLoop __asm__("_OBJC_CLASS_$_NSRunLoop") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSThread __asm__("_OBJC_CLASS_$_NSThread") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSTimer __asm__("_OBJC_CLASS_$_NSTimer") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSDate __asm__("_OBJC_CLASS_$_NSDate") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSValue __asm__("_OBJC_CLASS_$_NSValue") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSNumber __asm__("_OBJC_CLASS_$_NSNumber") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSMutableArray __asm__("_OBJC_CLASS_$_NSMutableArray") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSMutableDictionary __asm__("_OBJC_CLASS_$_NSMutableDictionary") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSMutableData __asm__("_OBJC_CLASS_$_NSMutableData") = Nil;
+__attribute__((visibility("default"), used, weak))
+Class DBExportedNSMutableString __asm__("_OBJC_CLASS_$_NSMutableString") = Nil;
 Class DBExportedNSUserDefaults __asm__("_OBJC_CLASS_$_NSUserDefaults") = Nil;
 __attribute__((visibility("default"), used, weak))
 Class DBExportedNSNotificationCenter __asm__("_OBJC_CLASS_$_NSNotificationCenter") = Nil;
@@ -540,6 +566,19 @@ static void DBDarwinBridgePluginInit(void) {
         httpResponseClass = DBNSHTTPURLResponseShim.class;
     }
     DBExportedNSHTTPURLResponse = httpResponseClass;
+    DBExportedNSAutoreleasePool = objc_getClass("NSAutoreleasePool");
+    DBExportedNSObject = objc_getClass("NSObject");
+    DBExportedNSException = objc_getClass("NSException");
+    DBExportedNSRunLoop = objc_getClass("NSRunLoop");
+    DBExportedNSThread = objc_getClass("NSThread");
+    DBExportedNSTimer = objc_getClass("NSTimer");
+    DBExportedNSDate = objc_getClass("NSDate");
+    DBExportedNSValue = objc_getClass("NSValue");
+    DBExportedNSNumber = objc_getClass("NSNumber");
+    DBExportedNSMutableArray = objc_getClass("NSMutableArray");
+    DBExportedNSMutableDictionary = objc_getClass("NSMutableDictionary");
+    DBExportedNSMutableData = objc_getClass("NSMutableData");
+    DBExportedNSMutableString = objc_getClass("NSMutableString");
     DBExportedNSUserDefaults = objc_getClass("NSUserDefaults");
     DBExportedNSNotificationCenter = objc_getClass("NSNotificationCenter");
     DBExportedNSProcessInfo = objc_getClass("NSProcessInfo");
