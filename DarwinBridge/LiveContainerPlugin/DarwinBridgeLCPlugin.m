@@ -610,6 +610,54 @@ const CGSize NSZeroSize = {0.0, 0.0};
 __attribute__((visibility("default"), used, weak))
 const CGRect NSZeroRect = {{0.0, 0.0}, {0.0, 0.0}};
 
+
+// macOS AppKit attributed-string/document constants required by the LoL client.
+// These historical data symbols are not exported from UIKit under the same
+// AppKit dylib ordinal, so DBAppKit provides stable compatibility values.
+#define DB_APPKITSTR(sym, value) \
+    __attribute__((visibility("default"), used)) \
+    NSString * const sym = @value
+
+DB_APPKITSTR(NSAttachmentAttributeName, "NSAttachment");
+DB_APPKITSTR(NSBackgroundColorAttributeName, "NSBackgroundColor");
+DB_APPKITSTR(NSBaselineOffsetAttributeName, "NSBaselineOffset");
+DB_APPKITSTR(NSExpansionAttributeName, "NSExpansion");
+DB_APPKITSTR(NSFontAttributeName, "NSFont");
+DB_APPKITSTR(NSForegroundColorAttributeName, "NSColor");
+DB_APPKITSTR(NSKernAttributeName, "NSKern");
+DB_APPKITSTR(NSLigatureAttributeName, "NSLigature");
+DB_APPKITSTR(NSLinkAttributeName, "NSLink");
+DB_APPKITSTR(NSObliquenessAttributeName, "NSObliqueness");
+DB_APPKITSTR(NSParagraphStyleAttributeName, "NSParagraphStyle");
+DB_APPKITSTR(NSShadowAttributeName, "NSShadow");
+DB_APPKITSTR(NSStrikethroughColorAttributeName, "NSStrikethroughColor");
+DB_APPKITSTR(NSStrikethroughStyleAttributeName, "NSStrikethrough");
+DB_APPKITSTR(NSStrokeColorAttributeName, "NSStrokeColor");
+DB_APPKITSTR(NSStrokeWidthAttributeName, "NSStrokeWidth");
+DB_APPKITSTR(NSTextEffectAttributeName, "NSTextEffect");
+DB_APPKITSTR(NSUnderlineColorAttributeName, "NSUnderlineColor");
+DB_APPKITSTR(NSUnderlineStyleAttributeName, "NSUnderline");
+DB_APPKITSTR(NSVerticalGlyphFormAttributeName, "NSVerticalGlyphForm");
+DB_APPKITSTR(NSWritingDirectionAttributeName, "NSWritingDirection");
+
+DB_APPKITSTR(NSDocumentTypeDocumentAttribute, "DocumentType");
+DB_APPKITSTR(NSCharacterEncodingDocumentAttribute, "CharacterEncoding");
+DB_APPKITSTR(NSDefaultAttributesDocumentAttribute, "DefaultAttributes");
+DB_APPKITSTR(NSDefaultTabIntervalDocumentAttribute, "DefaultTabInterval");
+DB_APPKITSTR(NSHyphenationFactorDocumentAttribute, "HyphenationFactor");
+DB_APPKITSTR(NSPaperMarginDocumentAttribute, "PaperMargin");
+DB_APPKITSTR(NSPaperSizeDocumentAttribute, "PaperSize");
+DB_APPKITSTR(NSReadOnlyDocumentAttribute, "ReadOnly");
+DB_APPKITSTR(NSViewModeDocumentAttribute, "ViewMode");
+DB_APPKITSTR(NSViewSizeDocumentAttribute, "ViewSize");
+DB_APPKITSTR(NSViewZoomDocumentAttribute, "ViewZoom");
+DB_APPKITSTR(NSPlainTextDocumentType, "NSPlainText");
+DB_APPKITSTR(NSRTFTextDocumentType, "NSRTF");
+DB_APPKITSTR(NSRTFDTextDocumentType, "NSRTFD");
+DB_APPKITSTR(NSHTMLTextDocumentType, "NSHTML");
+
+#undef DB_APPKITSTR
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
