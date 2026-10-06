@@ -174,19 +174,20 @@ struct LoLLiveContainerPackager {
         if p.contains("diskarbitration.framework") { return shim("DBDiskArbitration.dylib") }
         if p.contains("iokit.framework") { return shim("DBIOKit.dylib") }
 
-        // Frameworks that exist natively on iOS must keep their original dylib
-        // ordinal, but the macOS /Versions/A|C path must be rewritten to the
-        // actual iOS framework path. This lets dyld resolve Objective-C class
-        // exports (e.g. NSHTTPURLResponse) from the real framework instead of
-        // expecting those exports from a compatibility alias.
-        if p.contains("avfoundation.framework") { return native("AVFoundation") }
-        if p.contains("cfnetwork.framework") { return native("CFNetwork") }
-        if p.contains("corefoundation.framework") { return native("CoreFoundation") }
-        if p.contains("coregraphics.framework") { return native("CoreGraphics") }
-        if p.contains("coretext.framework") { return native("CoreText") }
-        if p.contains("foundation.framework") { return native("Foundation") }
-        if p.contains("security.framework") { return native("Security") }
-        if p.contains("systemconfiguration.framework") { return native("SystemConfiguration") }
+        // The macOS client can import desktop-only Objective-C classes from
+        // otherwise shared frameworks (for example NSAppleEventManager from
+        // Foundation). Route those ordinals through distinct compatibility
+        // aliases. DarwinBridgeLCPlugin re-exports the corresponding native iOS
+        // frameworks, so ordinary symbols flow through while desktop-only
+        // additions are supplied by the shim.
+        if p.contains("avfoundation.framework") { return shim("DBAVFoundation.dylib") }
+        if p.contains("cfnetwork.framework") { return shim("DBCFNetwork.dylib") }
+        if p.contains("corefoundation.framework") { return shim("DBCoreFoundation.dylib") }
+        if p.contains("coregraphics.framework") { return shim("DBCoreGraphics.dylib") }
+        if p.contains("coretext.framework") { return shim("DBCoreText.dylib") }
+        if p.contains("foundation.framework") { return shim("DBFoundation.dylib") }
+        if p.contains("security.framework") { return shim("DBSecurity.dylib") }
+        if p.contains("systemconfiguration.framework") { return shim("DBSystemConfiguration.dylib") }
 
         return nil
     }
