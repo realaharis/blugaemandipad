@@ -104,6 +104,15 @@ DB_EMPTY_CLASS(NSAppleEventManager)
 __attribute__((visibility("default"), used))
 Class DBExportedNSHTTPURLResponse __asm__("_OBJC_CLASS_$_NSHTTPURLResponse") = Nil;
 
+__attribute__((visibility("default"), used))
+Class DBExportedNSMutableURLRequest __asm__("_OBJC_CLASS_$_NSMutableURLRequest") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLRequest __asm__("_OBJC_CLASS_$_NSURLRequest") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLResponse __asm__("_OBJC_CLASS_$_NSURLResponse") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSCachedURLResponse __asm__("_OBJC_CLASS_$_NSCachedURLResponse") = Nil;
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
@@ -153,7 +162,12 @@ static void DBDarwinBridgePluginInit(void) {
         httpResponseClass = DBNSHTTPURLResponseShim.class;
     }
     DBExportedNSHTTPURLResponse = httpResponseClass;
+    DBExportedNSMutableURLRequest = objc_getClass("NSMutableURLRequest");
+    DBExportedNSURLRequest = objc_getClass("NSURLRequest");
+    DBExportedNSURLResponse = objc_getClass("NSURLResponse");
+    DBExportedNSCachedURLResponse = objc_getClass("NSCachedURLResponse");
     DBLog([NSString stringWithFormat:@"exported NSHTTPURLResponse class symbol -> %@", NSStringFromClass(httpResponseClass)]);
+    DBLog(@"exported CFNetwork/Foundation URL compatibility class symbols");
 
     NSApp = [NSApplication sharedApplication];
     DBLog(@"compatibility plugin loaded");
