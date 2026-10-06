@@ -113,6 +113,25 @@ Class DBExportedNSURLResponse __asm__("_OBJC_CLASS_$_NSURLResponse") = Nil;
 __attribute__((visibility("default"), used))
 Class DBExportedNSCachedURLResponse __asm__("_OBJC_CLASS_$_NSCachedURLResponse") = Nil;
 
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLProtectionSpace __asm__("_OBJC_CLASS_$_NSURLProtectionSpace") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLCredential __asm__("_OBJC_CLASS_$_NSURLCredential") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLAuthenticationChallenge __asm__("_OBJC_CLASS_$_NSURLAuthenticationChallenge") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLCache __asm__("_OBJC_CLASS_$_NSURLCache") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSHTTPCookie __asm__("_OBJC_CLASS_$_NSHTTPCookie") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSHTTPCookieStorage __asm__("_OBJC_CLASS_$_NSHTTPCookieStorage") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLProtocol __asm__("_OBJC_CLASS_$_NSURLProtocol") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLSession __asm__("_OBJC_CLASS_$_NSURLSession") = Nil;
+__attribute__((visibility("default"), used))
+Class DBExportedNSURLSessionConfiguration __asm__("_OBJC_CLASS_$_NSURLSessionConfiguration") = Nil;
+
 id NSApp = nil;
 NSString *NSCalibratedRGBColorSpace = @"NSCalibratedRGBColorSpace";
 NSString *NSDeviceRGBColorSpace = @"NSDeviceRGBColorSpace";
@@ -166,6 +185,15 @@ static void DBDarwinBridgePluginInit(void) {
     DBExportedNSURLRequest = objc_getClass("NSURLRequest");
     DBExportedNSURLResponse = objc_getClass("NSURLResponse");
     DBExportedNSCachedURLResponse = objc_getClass("NSCachedURLResponse");
+    DBExportedNSURLProtectionSpace = objc_getClass("NSURLProtectionSpace");
+    DBExportedNSURLCredential = objc_getClass("NSURLCredential");
+    DBExportedNSURLAuthenticationChallenge = objc_getClass("NSURLAuthenticationChallenge");
+    DBExportedNSURLCache = objc_getClass("NSURLCache");
+    DBExportedNSHTTPCookie = objc_getClass("NSHTTPCookie");
+    DBExportedNSHTTPCookieStorage = objc_getClass("NSHTTPCookieStorage");
+    DBExportedNSURLProtocol = objc_getClass("NSURLProtocol");
+    DBExportedNSURLSession = objc_getClass("NSURLSession");
+    DBExportedNSURLSessionConfiguration = objc_getClass("NSURLSessionConfiguration");
     DBLog([NSString stringWithFormat:@"exported NSHTTPURLResponse class symbol -> %@", NSStringFromClass(httpResponseClass)]);
     DBLog(@"exported CFNetwork/Foundation URL compatibility class symbols");
 
