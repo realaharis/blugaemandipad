@@ -85,13 +85,32 @@ with tempfile.TemporaryDirectory(prefix='db-installer-audit-') as tmp:
         sandbox = shutil.which('sandbox-exec')
         check(sandbox, 'sandbox-exec is required for the native installer regression')
         app = tmp/'NativeProbe.app'
-        app.mkdir()
-        target = app/'LeagueOfLegends'
+        (app/'Contents/MacOS').mkdir(parents=True)
+        target = app/'Contents/MacOS/LeagueOfLegends'
         target.write_bytes(m.data)
         target.chmod(0o755)
-        (app/'Info.plist').write_bytes(plistlib.dumps(dict(
+        (app/'Contents/Info.plist').write_bytes(plistlib.dumps(dict(
             CFBundleExecutable='LeagueOfLegends', CFBundleIdentifier='com.darwinbridge.installerregression',
             CFBundlePackageType='APPL', CFBundleName='Resource-less regression')))
+        # Thinning the vendor binary and replacing its bundle/Info.plist is a
+        # mutation. Validate and re-sign the *final* native harness before using
+        # its exit status as evidence about Riot startup. A killed unsigned copy
+        # says nothing about the missing-resource branch.
+        before = subprocess.run(['codesign', '--verify', '--strict', '--verbose=4', str(app)],
+                                capture_output=True, text=True)
+        report['native_signature_before'] = dict(returncode=before.returncode, stderr=before.stderr)
+        signed = subprocess.run(['codesign', '--force', '--sign', '-', '--timestamp=none', str(app)],
+                                capture_output=True, text=True)
+        report['native_resign'] = dict(returncode=signed.returncode, stderr=signed.stderr)
+        verified = subprocess.run(['codesign', '--verify', '--strict', '--verbose=4', str(app)],
+                                  capture_output=True, text=True)
+        report['native_signature_after'] = dict(returncode=verified.returncode, stderr=verified.stderr)
+        (a.out/'installer-audit.json').write_text(json.dumps(report, indent=2))
+        check(signed.returncode == 0 and verified.returncode == 0,
+              'native harness must have a valid final ad-hoc signature before execution')
+        final = MachO(target.read_bytes())
+        check(final.report()['lc_main'] == m.report()['lc_main'], 'native re-sign changed LC_MAIN')
+        check(final.report()['section_hashes'] == m.report()['section_hashes'], 'native re-sign changed section content')
         profile = '(version 1)(allow default)(deny network*)(deny process-fork)(deny file-write*)' \
                   + '(allow file-write* (subpath '+json.dumps(str(tmp))+') (literal "/dev/null"))'
         env = dict(os.environ, HOME=str(tmp), CFFIXED_USER_HOME=str(tmp), TMPDIR=str(tmp))
