@@ -15,4 +15,10 @@ for f in files:
   # A superclass must be an undefined native symbol, not a local Class variable.
   check(m.symbols['_OBJC_CLASS_$_NSObject']['section']==0,'NSObject is still shadowed')
   check(m.symbols['___CFConstantStringClassReference']['section']==0,'CFString isa is still shadowed')
+  for name in ('NSColor','NSFont','NSTask'):
+   for kind in ('CLASS','METACLASS'):
+    original=m.symbols[f'_OBJC_{kind}_$_{name}']
+    renamed=m.symbols[f'_OBJC_{kind}_$_DBShim{name}']
+    check(original['section']>0 and original['section']==renamed['section'] and
+          original['value']==renamed['value'],f'{name} {kind} alias is not the actual class object')
  print('PASS',f.name,'initializers',r['initializers'],'signature valid')

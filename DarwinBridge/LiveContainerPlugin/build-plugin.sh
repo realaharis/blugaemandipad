@@ -17,6 +17,7 @@ for framework in Foundation CoreFoundation UIKit CFNetwork Security CoreGraphics
 done
 "$CLANG" "${COMMON[@]}" -fobjc-arc -fblocks \
   "$ROOT/LiveContainerPlugin/DarwinBridgeLCPlugin.m" "${REEXPORTS[@]}" \
+  -Wl,-alias_list,"$ROOT/LiveContainerPlugin/class-aliases.txt" \
   -Wl,-needed_library,"$OUT/DBBootstrap.dylib" \
   -install_name @loader_path/DarwinBridgeLCPlugin.dylib -o "$OUT/DarwinBridgeLCPlugin.dylib"
 for name in AppKit CoreServices Cocoa ScriptingBridge DiskArbitration IOKit AVFoundation CFNetwork CoreFoundation CoreGraphics CoreText Foundation Security SystemConfiguration; do
