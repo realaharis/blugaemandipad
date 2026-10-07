@@ -929,7 +929,7 @@ struct ContentView: View {
                             row("dyld image APIs", backend.dyldImageAPIAvailable ? "PASS" : "missing")
                             row("JIT/debug session", backend.debuggerAttached ? "PASS" : "missing")
                             row("LoL client", backend.clientReady ? "PASS" : "blocked")
-                            row("514-import surface", backend.importsReady ? "PASS" : "blocked")
+                            row("Selected image import surface", backend.importsReady ? "PASS" : "blocked")
                             row("LoL shim surface", backend.shimReady ? "PASS" : "blocked")
 
                             if !backend.requirements.isEmpty {
@@ -1177,7 +1177,7 @@ struct ContentView: View {
                         )
                         firstRunPackageURL = package.ipaURL
                         firstRunPackageSummary =
-                            "AUTO READY — patched \(package.patchedDependencies.count) dependency path(s); " +
+                            "PACKAGE CREATED (execution unverified) — patched \(package.patchedDependencies.count) dependency path(s); " +
                             "imports \(deep.imports.count); unresolved launch imports \(dryRun.unresolvedImports)."
                     } catch {
                         firstRunPackageURL = nil

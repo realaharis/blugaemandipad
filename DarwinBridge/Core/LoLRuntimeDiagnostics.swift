@@ -78,13 +78,13 @@ struct LoLRuntimeDiagnostics {
                             detail: metalReady ? "MTLCreateSystemDefaultDevice available" : "Metal device entry point unavailable"))
 
         let bundleReady = FileManager.default.isReadableFile(atPath: Bundle.main.bundlePath)
-        points.append(.init(name: "Host resources",
+        points.append(.init(name: "Host bundle readability",
                             passed: bundleReady,
                             detail: Bundle.main.bundlePath))
 
         let ready = points.allSatisfy(\.passed)
         let summary = ready
-            ? "All measured runtime prerequisites are READY. Next boundary is the external LC_MAIN handoff."
+            ? "Static prerequisites passed. Guest dependency loading, Objective-C registration, initializers and LC_MAIN execution remain unverified."
             : "Runtime diagnostics found a blocker before the execution handoff."
 
         return LoLRuntimeDiagnosticReport(readyForHandoff: ready,

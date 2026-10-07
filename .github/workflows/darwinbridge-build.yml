@@ -115,7 +115,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: DarwinBridge-21G-debugger
-          path: DarwinBridge/JIT/darwinbridge-universal.js
+          path: |
+            DarwinBridge/JIT/darwinbridge-universal.js
+            DarwinBridge/JIT/README-21G.md
 
       - uses: actions/upload-artifact@v4
         with:

@@ -57,7 +57,7 @@ struct LoLExternalHandoffObserver {
         LoLRuntimeEventLog.shared.record("imports", "\(deepScan?.imports.count ?? 0)")
         LoLRuntimeEventLog.shared.record("runtime-shims", "\(runtimeValidation?.totalCovered ?? 0)")
         if let entry = image.entryOffset {
-            LoLRuntimeEventLog.shared.record("lc-main", String(format: "0x%llX", entry))
+            LoLRuntimeEventLog.shared.record("expected-lc-main", String(format: "0x%llX", entry))
         }
 
         return LoLExternalHandoffReadiness(
@@ -66,7 +66,7 @@ struct LoLExternalHandoffObserver {
             importCount: deepScan?.imports.count ?? 0,
             runtimeShimCount: runtimeValidation?.totalCovered ?? 0,
             note: ready
-                ? "DarwinBridge is ready to observe an external native handoff and capture runtime checkpoints."
+                ? "Static handoff plan prepared. No external guest instruction or initializer has been observed."
                 : "One or more prerequisites for external handoff observation are missing."
         )
     }

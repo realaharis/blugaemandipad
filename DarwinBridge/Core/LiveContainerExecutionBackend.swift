@@ -35,10 +35,11 @@ struct LiveContainerExecutionBackend {
         if !dyldReady { requirements.append("dyld image APIs") }
         if !debugger { requirements.append("LiveContainer/StikDebug JIT session") }
         if !clientReady { requirements.append("Stage 17 ARM64 client readiness") }
-        if !importsReady { requirements.append("514/514 launch import resolution") }
+        if !importsReady { requirements.append("launch import resolution for the selected image") }
         if !shimReady { requirements.append("Stage 16C LoL shim readiness") }
 
         var notes: [String] = []
+        notes.append("This is a static capability report, not a trace of LiveContainer or the guest executable.")
         notes.append("Backend contract: DarwinBridge owns macOS compatibility analysis and LoL shims; LiveContainer supplies the native guest-loading/execution environment.")
         notes.append("Integration intentionally does not duplicate LiveContainer's executable patching or entry-transfer implementation.")
         notes.append("The adapter expects a LiveContainer-capable host with dyld loading support and an active JIT/debug session on iPadOS 27.")

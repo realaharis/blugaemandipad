@@ -24,6 +24,7 @@ run(['xcrun','simctl','install',udid,str(app)])
 r=subprocess.run(['xcrun','simctl','launch','--terminate-running-process','--console-pty',udid,bundle],text=True,capture_output=True,timeout=45)
 (out/'launch.log').write_text(r.stdout+r.stderr)
 print(r.stdout+r.stderr)
+assert 'is implemented in both' not in r.stdout+r.stderr,'runtime class name collision'
 assert 'DB_IOS_RUNTIME_PROBE_PASS' in r.stdout+r.stderr,'iOS runtime probe did not reach successful UIKit startup'
 container=Path(output(['xcrun','simctl','get_app_container',udid,bundle,'data']))
 shutil.copy2(container/'Documents/DarwinBridge-runtime.log',out/'DarwinBridge-runtime.log')

@@ -49,6 +49,12 @@ runtime; it does not identify a device PC without a trace.
 - Fix debugger signal continuation: `vCont;Cxx:thread;c`, not single-step `Sxx`.
   Only recognized protocol BRKs advance PC; unknown/fatal traps are preserved.
 
+The host `MachOLoader`, `SymbolBroker`, dry-run, readiness and event-log stages
+are analysis/planning for this IPA route. They do not execute inside the guest
+loaded by LiveContainer. Resolving a host address does not validate an exported
+plugin ABI or prove a guest instruction. Readiness text now says this explicitly,
+and the planned entry offset is labeled `expected-lc-main` rather than a runtime event.
+
 ## Real execution chain (pinned upstream; installed version unknown)
 
 Audited LiveContainer commit `4dbe0f9a626de801184a42c0be8d2cb105058e3d`:
@@ -81,7 +87,14 @@ simulator, installs a native UIKit probe and loads the forwarding dylibs. The te
 requires native NSObject/NSString pointer identity through three distinct aliases,
 one shared implementation address, both bootstrap and plugin constructor log
 markers, and successful UIApplicationMain startup. Its logs and simulator/runtime
-identity are uploaded with the audit. This is simulator execution, not iPad proof.
+identity are uploaded with the audit. Run 37521172666 reached both constructors,
+the file logger, heartbeat and UIKit main on arm64 iOS 26.2. Its log also exposed
+three pre-existing runtime-name collisions (NSColor, NSFont, NSTask). These existing
+shims now use distinct DBShim runtime names, with Mach-O aliases pointing directly
+to their real class/metaclass objects. The integration test checks those identities
+and rejects duplicate-class warnings. Dynamic NSClassFromString lookup of the
+original names still resolves to iOS classes; full AppKit behavior is not claimed.
+This is simulator execution, not iPad proof.
 
 ## Final artifact validation and limits
 

@@ -1,5 +1,7 @@
 #import <UIKit/UIKit.h>
 #include <dlfcn.h>
+#include <objc/runtime.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 @interface DBProbeDelegate : UIResponder <UIApplicationDelegate>
@@ -20,6 +22,17 @@
         if(dlsym(h,"OBJC_CLASS_$_NSObject") != (__bridge void *)NSObject.class ||
            dlsym(h,"OBJC_CLASS_$_NSString") != (__bridge void *)NSString.class) {
             fprintf(stderr,"DB_PROBE_FAIL native class identity\n");exit(3);
+        }
+        const char *aliases[]={"NSColor","NSFont","NSTask"};
+        for(int j=0;j<3;j++) {
+            char symbol[128], expected[128];
+            snprintf(symbol,sizeof(symbol),"OBJC_CLASS_$_%s",aliases[j]);
+            snprintf(expected,sizeof(expected),"DBShim%s",aliases[j]);
+            Class cls=(__bridge Class)dlsym(h,symbol);
+            if(!cls || strcmp(class_getName(cls),expected)!=0 ||
+               cls==objc_getClass(aliases[j])) {
+                fprintf(stderr,"DB_PROBE_FAIL class identity collision: %s\n",aliases[j]);exit(6);
+            }
         }
         void *entry=dlsym(h,"DBDarwinBridgePluginVersion");
         if(!entry || (implementation && entry!=implementation)) {

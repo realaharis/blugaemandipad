@@ -199,6 +199,7 @@ static void DBInstallCrashDiagnostics(void) {
 DB_EMPTY_CLASS(NSAlert)
 DB_EMPTY_CLASS(NSBitmapImageRep)
 
+__attribute__((objc_runtime_name("DBShimNSColor")))
 @interface NSColor : DBCompatObject
 @property(nonatomic, strong) UIColor *dbColor;
 + (instancetype)blackColor;
@@ -239,6 +240,7 @@ DB_EMPTY_CLASS(NSBitmapImageRep)
 - (CGColorRef)CGColor { return self.dbColor.CGColor; }
 @end
 
+__attribute__((objc_runtime_name("DBShimNSFont")))
 @interface NSFont : DBCompatObject
 @property(nonatomic, strong) UIFont *dbFont;
 + (instancetype)systemFontOfSize:(CGFloat)size;
@@ -297,6 +299,7 @@ DB_EMPTY_CLASS(NSWindow)
 DB_EMPTY_CLASS(SBApplication)
 DB_EMPTY_CLASS(NSAppleEventManager)
 
+__attribute__((objc_runtime_name("DBShimNSTask")))
 @interface NSTask : DBCompatObject
 @property(copy) NSString *launchPath;
 @property(copy) NSArray<NSString *> *arguments;
@@ -938,3 +941,17 @@ static void DBDarwinBridgePluginInit(void) {
            NSStringFromClass(UIApplication.class),
            NSClassFromString(@"MTLDevice") ? @"yes" : @"no"]);
 }
+
+// iOS 26.2 runtime testing proved these names are already owned by UIKit /
+// UIFoundation / Foundation. Give our existing shims distinct runtime names.
+// The exported compatibility symbols alias the actual objc_class objects;
+// they are NOT pointer variables and require no constructor-time assignment.
+#define DB_CLASS_OBJECT_ALIAS(publicName, runtimeName) \
+    __asm__(".globl _OBJC_CLASS_$_" #publicName "\n" \
+            ".set _OBJC_CLASS_$_" #publicName ", _OBJC_CLASS_$_" #runtimeName "\n" \
+            ".globl _OBJC_METACLASS_$_" #publicName "\n" \
+            ".set _OBJC_METACLASS_$_" #publicName ", _OBJC_METACLASS_$_" #runtimeName "\n")
+DB_CLASS_OBJECT_ALIAS(NSColor, DBShimNSColor);
+DB_CLASS_OBJECT_ALIAS(NSFont, DBShimNSFont);
+DB_CLASS_OBJECT_ALIAS(NSTask, DBShimNSTask);
+#undef DB_CLASS_OBJECT_ALIAS

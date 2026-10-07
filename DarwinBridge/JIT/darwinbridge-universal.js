@@ -9,6 +9,7 @@ let detached = false;
 const epoch = Date.now();
 const owned = new Map();
 const observed = new Set();
+const mappedImages = new Set();
 let notification = null;
 let imageCache = [];
 function event(kind, detail) { log(`[DB21G +${Date.now()-epoch}ms] ${kind} ${detail}`); }
@@ -102,7 +103,11 @@ function images() {
         const r=send_command('jGetLoadedDynamicLibrariesInfos:{"fetch_all_solibs":true,"information-level":"address-name-uuid"}');
         if(!r || r[0]!=='{') { event('images-unavailable',String(r)); return; }
         const parsed=JSON.parse(r); imageCache=parsed.images || [];
-        event('loaded-images',JSON.stringify(imageCache.map(i=>({path:i.pathname,uuid:i.uuid,base:i.load_address}))));
+        event('loaded-image-count',String(imageCache.length));
+        for(const i of imageCache) {
+            const key=String(i.load_address)+':'+String(i.uuid);
+            if(!mappedImages.has(key)) { event('image-map',JSON.stringify({path:i.pathname,uuid:i.uuid,base:i.load_address})); mappedImages.add(key); }
+        }
         for(const img of imageCache) inspectImage(img);
     } catch(e) { event('image-query-error',String(e)); }
 }
@@ -156,7 +161,7 @@ try {
     let stop=send_command(`vAttach;${pid.toString(16)}`);
     event('attach',String(stop));
     if(!/^[TS][0-9a-f]{2}/i.test(stop || '')) throw new Error('vAttach did not return a stop');
-    attached=true; frame(stop); snapshot(); setupNotification();
+    attached=true; event('process-info',String(send_command('qProcessInfo'))); frame(stop); snapshot(); setupNotification();
     // The synthetic attach signal is never forwarded. Resume ALL threads.
     let next='vCont;c';
     while(!detached) {
@@ -165,7 +170,8 @@ try {
         if(/^[WX][0-9a-f]{2}/i.test(stop || '')) { event('exit',stop); attached=false; break; }
         if(!/^[TS][0-9a-f]{2}/i.test(stop || '')) throw new Error(`invalid stop/resume response: ${stop}`);
         frame(stop);
-        const key=pc.toString(), label=owned.get(key);
+        const trap=stop.slice(1,3).toLowerCase()==='05';
+        const key=pc.toString(), label=trap ? owned.get(key) : undefined;
         if(label) {
             event('boundary',label); disarm(pc);
             if(label==='dyld:image-notification') {
@@ -183,7 +189,7 @@ try {
         const raw=read(pc,4), insn=raw ? Number(le(raw)) : null;
         const isBRK=insn!==null && ((insn & 0xffe0001f)>>>0)===0xd4200000;
         const imm=isBRK ? (insn>>>5)&65535 : null;
-        if(isBRK && legacyCommands[imm] && (imm!==0xf00d || commands[Number(x16)])) {
+        if(trap && isBRK && legacyCommands[imm] && (imm!==0xf00d || commands[Number(x16)])) {
             event('jit-call',`brk=${imm.toString(16)} command=${x16}`);
             // Only a recognized protocol instruction is advanced.
             put(32,pc+4n); legacyCommands[imm](stop); next='vCont;c'; continue;
