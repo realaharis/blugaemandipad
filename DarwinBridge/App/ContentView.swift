@@ -998,11 +998,12 @@ struct ContentView: View {
                     }
 
                     Section("Stage-20B First Real Launch Package") {
-                        Button("Build LoL first-run IPA for LiveContainer") {
+                        Button("Build diagnostic IPA for LiveContainer") {
                             do {
                                 guard let importedData else { return }
                                 let package = try LoLLiveContainerPackager.buildMinimalIPA(
-                                    executable: importedData
+                                    executable: importedData,
+                                    sourceFileName: fileName
                                 )
                                 firstRunPackageURL = package.ipaURL
                                 firstRunPackageSummary = "Patched \(package.patchedDependencies.count) desktop dependency path(s); executable \(package.executableBytes) bytes; plugin \(package.pluginBytes) bytes."
@@ -1026,10 +1027,10 @@ struct ContentView: View {
                             ShareLink(item: url) {
                                 Label("Export DarwinBridge-LoL-first-run.ipa", systemImage: "square.and.arrow.up")
                             }
-                            row("Package", "READY")
+                            row("Package", "DIAGNOSTIC ONLY")
                         }
 
-                        Text("This produces the first minimal LiveContainer test package from the real LoL ARM64 executable and embeds DarwinBridgeLCPlugin. It is intentionally a first-start package: a launch, crash, loader error or compatibility exception is useful runtime evidence.")
+                        Text("This packages an imported executable for loader diagnostics and records its original identity. It does not include a complete Riot client bundle. Riot installers and missing payload dependencies block packaging.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -1173,7 +1174,8 @@ struct ContentView: View {
                         }
 
                         let package = try LoLLiveContainerPackager.buildMinimalIPA(
-                            executable: data
+                            executable: data,
+                            sourceFileName: url.lastPathComponent
                         )
                         firstRunPackageURL = package.ipaURL
                         firstRunPackageSummary =

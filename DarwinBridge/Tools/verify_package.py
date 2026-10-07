@@ -8,12 +8,18 @@ with zipfile.ZipFile(a.ipa) as z:
  check(z.testzip() is None,'ZIP CRC failure');z.extractall(a.out)
 app=a.out/'Payload/LeagueOfLegends.app';info=plistlib.loads((app/'Info.plist').read_bytes());exe=app/info['CFBundleExecutable']
 original=MachO(a.original.read_bytes());patched=MachO(exe.read_bytes());comparison=compare(original,patched)
+identity=json.loads((app/'DarwinBridge-package.json').read_text())
+check(identity['source_arm64_sha256']==original.report()['sha256'],'source hash lost during packaging')
+check(identity['source_uuid']==original.report()['uuid'],'source UUID lost during packaging')
+check(identity['source_lc_main']==original.report()['lc_main'][0],'source entry offset lost during packaging')
+check(identity['source_file_name']==a.original.name,'source filename lost during packaging')
+check(identity['role']=='unclassified-executable','package mislabels an unverified executable')
 check(patched.u32(12)==2,'packager must keep executable until LiveContainer patches it')
 check(not patched.code_pages()['present'],'stale Riot signature still attached')
 check(any(c==0x32 and patched.u32(o+8)==2 or c==0x25 for c,o,_ in patched.commands),'iOS platform missing')
 check(any(c==0x80000028 for c,_,_ in patched.commands),'LC_MAIN absent')
 files=[exe]+sorted((app/'Frameworks').glob('*.dylib'))
-report={'comparison':comparison,'binaries':{},'unresolved_bundle_dependencies':[]}
+report={'comparison':comparison,'source_identity':identity,'binaries':{},'unresolved_bundle_dependencies':[]}
 class_owners={}
 for f in files:
  m=MachO(f.read_bytes());check(m.u32(4)==0x100000c,'non ARM64 binary');check(not m.abi_violations(),'invalid class export')
@@ -48,7 +54,8 @@ for f in files:
   (a.out/(f.name+'.inspection.txt')).write_text('\n'.join(text))
 report['signed_comparison']=compare(original,MachO(exe.read_bytes()))
 report['device_execution_proven']=False
-report['candidate_approved']=not report['unresolved_bundle_dependencies']
+report['fixture_structure_passed']=not report['unresolved_bundle_dependencies']
+report['full_game_candidate_approved']=False
 (a.out/'package-audit.json').write_text(json.dumps(report,indent=2))
 if a.sign:
  subprocess.run(['codesign','--force','--sign','-',str(app)],check=True)

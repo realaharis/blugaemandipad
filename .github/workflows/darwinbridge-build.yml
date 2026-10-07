@@ -86,6 +86,13 @@ jobs:
             artifacts/loader-audit/final/Payload/LeagueOfLegends.app/LeagueOfLegends \
             artifacts/loader-audit/livecontainer
 
+      - name: Reproduce installer exit and reject misidentified inputs
+        run: |
+          python3 -m venv /tmp/db-installer-env
+          /tmp/db-installer-env/bin/pip install capstone==5.0.9
+          /tmp/db-installer-env/bin/python DarwinBridge/Tools/installer_startup_audit.py \
+            --packager /tmp/db-packager --runtime DarwinBridge/build/livecontainer-plugin
+
       - name: Execute full compatibility runtime in iOS simulator
         run: python3 DarwinBridge/Tools/run_ios_probe.py
 

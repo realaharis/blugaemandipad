@@ -1,5 +1,58 @@
 # Stage 21G loader audit
 
+## Device evidence received 2026-10-07
+
+The new device log proves that DBBootstrap ran, the compatibility plugin reached
+`plugin-constructor-complete`, and its atexit handler ran. The loaded-image snapshot
+contains `LeagueOfLegends`, all 14 distinct forwarders, DBBootstrap and one plugin.
+`NSApplication sharedApplication` is called by our constructor; that line is not
+evidence of the guest application lifecycle. `NORMAL EXIT` is an atexit marker,
+not proof of a successful application startup. There is no NSApplication.run
+checkpoint, guest UUID, source hash or exit status in this log. Sanitized findings
+and the submitted file's hash are in `device-20261007-evidence.json`.
+
+A separate screenshot reports LiveContainer's guest main returning 252. The
+source of that message is immediately after its call to the LC_MAIN entrypoint.
+The screenshot and log have no shared run identifier, so correlating them to one
+invocation remains a user-provided context rather than a measured association.
+
+The 14 forwarding-library names **and their order** match the official EUW Mac
+installer's `RiotClientServices` executable. The official ZIP downloaded from
+`https://lol.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.euw.zip`
+has SHA-256 `4f02590ef8a1bd41ad77c6c5a07d33029220a2e421d7bb4dee31653ef17a9181`;
+its ARM64 slice is 18,330,112 bytes, UUID
+`5e0c030d-a1b8-3b20-854d-8479b43b0a2c`, SHA-256
+`199f80081c87b9dd0f3a996ea85dbbdedd0680d14dc2f003f90d1ef9f29da782`.
+This is a strong installer fingerprint, not a verified match to the device UUID.
+Neither the harvested LeagueClient nor game executable has this dependency graph.
+
+Disassembly of that pinned official binary shows LC_MAIN at offset `0x9d99bc`
+calling startup at `0x9d49d0`. The startup code sets return register w23 to 252
+at offset `0x9d519c` after the system.yaml load-failure diagnostic, and at
+`0x9d51c4` after the missing-publisher diagnostic. There are also two later 252
+paths. Therefore 252 is not uniquely diagnostic of one failed operation. These
+are static file offsets, not measured device PCs. The official app includes
+`Contents/Resources/system.yaml`, themes, localization and fonts; the old
+executable-only packager omitted all of these and renamed the input unconditionally.
+
+`installer_startup_audit.py` checks the official ZIP and ARM64 hashes, disassembles
+the exit sites, tests packager rejection under both original and renamed filenames,
+and runs a resource-less native copy under a restricted macOS sandbox. Its uploaded
+report records the actual native exit result; no Riot binaries or assets are
+published. The rolling download URL is hash-guarded and will fail if Riot replaces
+the source, rather than silently comparing a different version.
+
+The packager now rejects this installer/bootstrap by content and includes
+`DarwinBridge-package.json` in diagnostic packages with original filename, ARM64
+hash, UUID, entry offset and dependencies. Unknown binaries are explicitly
+unclassified. This prevents installer input from being presented as a complete
+LoL client; it does not implement a complete Riot bundle port. Inspecting the
+actual installed IPA is still required to resolve the device's exact input identity
+and distinguish the individual startup-failure branches. No additional API shims
+or guessed startup arguments were added.
+
+## Original pre-initializer failure
+
 The pre-initializer blocker is invalid **native runtime identity**, not a missing
 shim symbol. The plugin downloaded from CI artifact **11436883293**, run
 **37516140814**, commit `4b192bfe604e05203b40dc04d51798954f7cd660`, contains 78
@@ -116,7 +169,8 @@ this release. A manifest's combined fat-architecture import count is not evidenc
 that every ARM64 import is covered.
 
 The installed `DarwinBridge-LoL-first-run.ipa`, installed LiveContainer build and
-device trace have not been supplied. No exact last device instruction is claimed.
+debugger trace have not been supplied. The newer in-process log is documented above.
+No exact last device instruction is claimed.
 A lack of log alone cannot distinguish mapping, binding, ObjC registration,
 initializer entry, or failure inside the logger.
 

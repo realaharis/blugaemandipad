@@ -1,15 +1,18 @@
 import Foundation
+import CryptoKit
 
 enum LoLLiveContainerPackageError: Error, LocalizedError {
     case malformed(String)
     case pluginMissing
     case unsupportedDependency(String)
     case missingPayloadDependency(String)
+    case installerIsNotClient
 
     var errorDescription: String? {
         switch self {
         case .malformed(let message): return "LoL package error: \(message)"
         case .pluginMissing: return "DarwinBridgeLCPlugin.dylib is not embedded in this DarwinBridge build."
+        case .installerIsNotClient: return "RiotClientServices installer/bootstrap detected. A standalone installer executable cannot be packaged as League of Legends. Its system.yaml and resources are missing from an executable-only import; a complete client bundle and dependency graph are required."
         case .missingPayloadDependency(let path): return "Minimal package cannot include this required payload dependency: \(path). Importing one executable is not a complete app bundle."
         case .unsupportedDependency(let path): return "Dependency path is too short to redirect safely: \(path)"
         }
@@ -34,7 +37,8 @@ struct LoLLiveContainerPackager {
     private static let lcVersionMinIPhoneOS: UInt32 = 0x25
 
     static func buildMinimalIPA(executable source: Data,
-                                displayName: String = "League of Legends",
+                                displayName: String = "DarwinBridge Guest Probe",
+                                sourceFileName: String? = nil,
                                 runtimeDirectory: URL? = nil,
                                 outputURL: URL? = nil) throws -> LoLLiveContainerPackageResult {
         var executable = try MachOParser.preferredArm64Slice(source)
@@ -42,6 +46,38 @@ struct LoLLiveContainerPackager {
         guard image.isArm64, image.fileType == 2, !image.encrypted else {
             throw LoLLiveContainerPackageError.malformed("expected an unencrypted ARM64 executable")
         }
+        let sourceHash = SHA256.hash(data: executable).map { String(format: "%02x", $0) }.joined()
+        // Check the bytes, not the user-controlled filename. The official Mac
+        // download is RiotClientServices, even when renamed LeagueOfLegends.
+        let knownInstaller = sourceHash == "199f80081c87b9dd0f3a996ea85dbbdedd0680d14dc2f003f90d1ef9f29da782"
+        let installerMarkers = ["Running Dev Feature 2 Installer.",
+                                "'publisher' not found in system-settings",
+                                "Loaded system.yaml from embedded resource in executable."]
+        if knownInstaller || installerMarkers.allSatisfy({ executable.range(of: Data(($0 + "\0").utf8)) != nil }) {
+            throw LoLLiveContainerPackageError.installerIsNotClient
+        }
+        var sourceUUIDs: [String] = []
+        var commandOffset = 32
+        for _ in 0..<image.commands {
+            let command = try u32(executable, commandOffset)
+            let size = Int(try u32(executable, commandOffset + 4))
+            if command == 0x1B, size >= 24 {
+                let h = executable[commandOffset+8..<commandOffset+24].map { String(format: "%02x", $0) }
+                sourceUUIDs.append([h[0..<4], h[4..<6], h[6..<8], h[8..<10], h[10..<16]].map { $0.joined() }.joined(separator: "-"))
+            }
+            commandOffset += size
+        }
+        let identity: [String: Any] = [
+            "schema": "darwinbridge-package-identity-v1",
+            "source_file_name": sourceFileName.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "unknown",
+            "source_arm64_sha256": sourceHash,
+            "source_arm64_bytes": executable.count,
+            "source_uuid": sourceUUIDs,
+            "source_lc_main": image.entryOffset.map { String(format: "0x%llx", $0) } ?? "missing",
+            "source_dependencies": image.dependencies.map(\.path),
+            "role": "unclassified-executable",
+            "scope": "executable-only diagnostic; complete Riot payload and device execution unverified"
+        ]
         try removeCodeSignatureCommand(&executable)
         let redirects = try patchForLiveContainer(&executable)
         try injectBootstrapLoadCommand(&executable,
@@ -59,6 +95,8 @@ struct LoLLiveContainerPackager {
 
         var zip = StoreZipWriter()
         try zip.add(path: "Payload/LeagueOfLegends.app/Info.plist", data: info)
+        try zip.add(path: "Payload/LeagueOfLegends.app/DarwinBridge-package.json",
+                    data: JSONSerialization.data(withJSONObject: identity, options: [.prettyPrinted, .sortedKeys]))
         try zip.add(path: "Payload/LeagueOfLegends.app/\(executableName)", data: executable)
         // Copy pre-linked, pre-signed forwarding dylibs byte for byte. Cloning
         // the implementation duplicated every ObjC class and invalidated signatures.
