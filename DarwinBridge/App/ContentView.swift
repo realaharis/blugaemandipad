@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var importingApp = false
     @State private var guestApps: [DBGuestApp] = []
     @State private var guestError: String?
+    @State private var guestRunReports: [String: String] = [:]
     @State private var fileName = "No Mach-O selected"
     @State private var image: MachOImageInfo?
     @State private var report: CompatibilityReport?
@@ -57,6 +58,17 @@ struct ContentView: View {
                             Text("Imports: \(guest.importCount) • unresolved: \(guest.unresolvedCount)").font(.caption)
                             Text(guest.blockers.isEmpty ? "Dependency inspection pending" : guest.blockers.joined(separator: "; "))
                                 .font(.caption2).foregroundStyle(.secondary)
+                            Button("Check guest launch readiness") {
+                                do {
+                                    guestRunReports[guest.id] = try DBGuestExecution.preflight(guest).description
+                                } catch {
+                                    guestRunReports[guest.id] = "Preflight failed: " + error.localizedDescription
+                                }
+                            }
+                            if let details = guestRunReports[guest.id] {
+                                Text(details).font(.caption2).monospaced()
+                                    .textSelection(.enabled)
+                            }
                             Text("Guest execution is not yet implemented; installation is not an execution claim.")
                                 .font(.caption2).foregroundStyle(.orange)
                         }
