@@ -21,11 +21,26 @@ run(['codesign','--force','--sign','-',str(app)])
 if device['state']!='Booted':run(['xcrun','simctl','boot',udid])
 run(['xcrun','simctl','bootstatus',udid,'-b'],timeout=240)
 run(['xcrun','simctl','install',udid,str(app)])
-r=subprocess.run(['xcrun','simctl','launch','--terminate-running-process','--console-pty',udid,bundle],text=True,capture_output=True,timeout=45)
-(out/'launch.log').write_text(r.stdout+r.stderr)
-print(r.stdout+r.stderr)
-assert 'is implemented in both' not in r.stdout+r.stderr,'runtime class name collision'
-assert 'DB_IOS_RUNTIME_PROBE_PASS' in r.stdout+r.stderr,'iOS runtime probe did not reach successful UIKit startup'
+# Avoid --console-pty: it can keep the simctl process open indefinitely
+# even after the app has launched. The probe writes a persistent log itself.
+launch=subprocess.run(['xcrun','simctl','launch','--terminate-running-process',udid,bundle],
+                      text=True,capture_output=True,timeout=45)
+(out/'launch.log').write_text(launch.stdout+launch.stderr)
+print(launch.stdout+launch.stderr)
+assert launch.returncode == 0,'simctl launch failed'
+import time
+container=Path(output(['xcrun','simctl','get_app_container',udid,bundle,'data']))
+logfile=container/'Documents/DarwinBridge-runtime.log'
+deadline=time.monotonic()+75
+contents=''
+while time.monotonic()<deadline:
+    if logfile.exists():
+        contents=logfile.read_text(errors='replace')
+        if 'DB_IOS_RUNTIME_PROBE_PASS' in contents:break
+    time.sleep(2)
+(out/'launch.log').write_text(launch.stdout+launch.stderr+'\n'+contents)
+assert 'is implemented in both' not in contents+launch.stderr,'runtime class name collision'
+assert 'DB_IOS_RUNTIME_PROBE_PASS' in contents,'iOS runtime probe did not reach successful UIKit startup; see launch.log'
 container=Path(output(['xcrun','simctl','get_app_container',udid,bundle,'data']))
 shutil.copy2(container/'Documents/DarwinBridge-runtime.log',out/'DarwinBridge-runtime.log')
 (out/'result.json').write_text(json.dumps(dict(passed=True,runtime=runtime,device=device['name'],architecture=arch,physical_ipad_tested=False),indent=2))
