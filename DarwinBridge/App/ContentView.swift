@@ -3,6 +3,9 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @State private var importing = false
+    @State private var importingApp = false
+    @State private var guestApps: [DBGuestApp] = []
+    @State private var guestError: String?
     @State private var fileName = "No Mach-O selected"
     @State private var image: MachOImageInfo?
     @State private var report: CompatibilityReport?
@@ -45,6 +48,21 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("macOS Guest Library — DarwinBridge 2.0") {
+                    Button("Install macOS .app bundle") { importingApp = true }
+                    ForEach(guestApps) { guest in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(guest.name).font(.headline)
+                            Text("macOS ARM64 • " + guest.executable).font(.caption)
+                            Text("Imports: \(guest.importCount) • unresolved: \(guest.unresolvedCount)").font(.caption)
+                            Text(guest.blockers.isEmpty ? "Dependency inspection pending" : guest.blockers.joined(separator: "; "))
+                                .font(.caption2).foregroundStyle(.secondary)
+                            Text("Guest execution is not yet implemented; installation is not an execution claim.")
+                                .font(.caption2).foregroundStyle(.orange)
+                        }
+                    }
+                    if let guestError { Text(guestError).foregroundStyle(.red) }
+                }
                 Section("Target") {
                     Text(fileName).font(.headline)
                     Button("Import macOS Mach-O") { importing = true }
@@ -1106,6 +1124,15 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("DarwinBridge")
+            .onAppear { guestApps = DBGuestLibrary.installed() }
+            .fileImporter(isPresented: $importingApp, allowedContentTypes: [.item], allowsMultipleSelection: false) { result in
+                do {
+                    guard let url = try result.get().first else { return }
+                    _ = try DBGuestLibrary.install(bundle: url)
+                    guestApps = DBGuestLibrary.installed()
+                    guestError = nil
+                } catch { guestError = error.localizedDescription }
+            }
             .fileImporter(isPresented: $importing,
                           allowedContentTypes: [.item],
                           allowsMultipleSelection: false) { result in
