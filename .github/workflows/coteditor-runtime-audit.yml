@@ -1,0 +1,28 @@
+name: CotEditor macOS Runtime Audit
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/coteditor-runtime-audit.yml'
+      - 'DarwinBridge/Research/CotEditor/**'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect official CotEditor 7.1.1 DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          python3 DarwinBridge/Research/CotEditor/audit.py --output reports/coteditor-audit.json
+      - name: Upload text-only audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coteditor-macos-binary-audit
+          path: reports/
+          retention-days: 7
